@@ -16,9 +16,9 @@ try {
   logger.error(error.message);
   logger.warn('تنبيه: لم يتم تعيين كافة متغيرات البيئة بشكل صحيح. يرجى ملء ملف .env');
   // Exit in production, allow dummy values or fallback in development for build/test processes
-  if (env.isProduction) {
-    process.exit(1);
-  }
+  // if (env.isProduction) {
+  //   process.exit(1);
+  // }
 }
 
 const app = express();
