@@ -3,7 +3,7 @@ import { env } from './env.js';
 
 export const logger = pino({
   level: env.isProduction ? 'info' : 'debug',
-  transport: env.isDevelopment
+  transport: (env.isDevelopment && process.env.VERCEL !== '1')
     ? {
         target: 'pino-pretty',
         options: {
