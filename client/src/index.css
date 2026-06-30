@@ -1,0 +1,266 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    direction: rtl;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Cascadia Code', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f2e0b8;
+    color: #201B16;
+    min-height: 100vh;
+  }
+
+  /* Ensure LTR for technical fields */
+  [dir="ltr"],
+  .ltr {
+    direction: ltr;
+    text-align: left;
+  }
+
+  /* Monospace for SKUs and IDs */
+  .font-mono {
+    font-family: 'Cascadia Code', 'JetBrains Mono', monospace;
+    direction: ltr;
+    unicode-bidi: embed;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #D6C3B4;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #837467;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid #9c5c24;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Input placeholder */
+  ::placeholder {
+    color: #ADB5BD;
+    opacity: 1;
+  }
+}
+
+@layer components {
+
+  /* Card, Sidebar, Header, and Metric Card Unified Glassmorphism */
+  .card,
+  .card.bg-white,
+  .metric-card,
+  .metric-card.bg-white,
+  aside,
+  header {
+    background-color: rgba(156, 92, 36, 0.06) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(156, 92, 36, 0.15) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px 0 rgba(156, 92, 36, 0.04) !important;
+  }
+
+  /* Specific border resets for layout since they are full-height/width */
+  aside {
+    border-radius: 0px !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-right: none !important;
+    border-left: 1px solid rgba(156, 92, 36, 0.15) !important;
+  }
+
+  header {
+    border-radius: 0px !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(156, 92, 36, 0.15) !important;
+  }
+
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+
+  .card-hover:hover,
+  .card-hover.bg-white:hover {
+    background-color: rgba(156, 92, 36, 0.12) !important;
+    border-color: rgba(156, 92, 36, 0.3) !important;
+    box-shadow: 0 8px 32px 0 rgba(156, 92, 36, 0.1) !important;
+  }
+
+  /* Inputs, Selects, and Textareas */
+  input,
+  select,
+  textarea {
+    background-color: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(156, 92, 36, 0.15) !important;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    border-color: rgba(156, 92, 36, 0.35) !important;
+  }
+
+  .bg-surface-container-low {
+    background-color: rgba(156, 92, 36, 0.03) !important;
+    border-color: rgba(156, 92, 36, 0.1) !important;
+  }
+
+  /* Status badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-sm font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-success-light text-success-dark;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-light text-warning-dark;
+  }
+
+  .badge-danger {
+    @apply badge bg-danger-light text-danger-dark;
+  }
+
+  .badge-neutral {
+    @apply badge bg-neutral-100 text-neutral-700;
+  }
+
+  .badge-primary {
+    @apply badge bg-brand-100 text-brand-700;
+  }
+
+  /* Stock quantity badges */
+  .stock-in {
+    @apply badge-success;
+  }
+
+  .stock-low {
+    @apply badge-warning;
+  }
+
+  .stock-out {
+    @apply badge-danger;
+  }
+
+  /* Page header */
+  .page-header {
+    @apply mb-6;
+  }
+
+  .page-title {
+    @apply text-headline-lg text-on-surface;
+  }
+
+  .page-subtitle {
+    @apply text-body-md text-on-surface-variant mt-1;
+  }
+
+  /* Table styles */
+  .data-table {
+    @apply w-full border-collapse;
+  }
+
+  .data-table th {
+    @apply px-4 py-3 text-right text-label-sm font-semibold text-on-surface-variant border-b border-border-subtle sticky top-0;
+    background-color: rgba(156, 92, 36, 0.08);
+  }
+
+  .data-table td {
+    @apply px-4 py-3 text-body-md border-b border-border-subtle;
+  }
+
+  .data-table tbody tr {
+    @apply transition-colors;
+  }
+
+  .data-table tbody tr:hover {
+    background-color: rgba(156, 92, 36, 0.05);
+  }
+
+  /* Metric card */
+  .metric-card {
+    @apply card p-5 flex flex-col gap-2;
+  }
+
+  .metric-value {
+    @apply text-2xl font-semibold text-on-surface tabular-nums;
+  }
+
+  .metric-label {
+    @apply text-body-md text-on-surface-variant;
+  }
+}
+
+@layer utilities {
+  .animate-skeleton {
+    @apply animate-pulse bg-neutral-200 rounded;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Print styles */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+  }
+
+  .animate-toast-slide-in {
+    animation: toastSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  @keyframes toastSlideIn {
+    from {
+      transform: translateX(-120%) scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0) scale(1);
+      opacity: 1;
+    }
+  }
+}
