@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     const unlock = () => {
       initAudio();
       if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
-        sharedAudioContext.resume().catch((err) => console.log('Failed to resume AudioContext:', err));
+        sharedAudioContext.resume().catch((err) => console.warn('Failed to resume AudioContext:', err));
       }
     };
     window.addEventListener('click', unlock);
@@ -80,12 +80,12 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       if (sharedAudio) {
         sharedAudio.currentTime = 0;
         sharedAudio.play().catch((err) => {
-          console.log('Audio Context playback failed, trying fallback:', err);
+          console.warn('Audio Context playback failed, trying fallback:', err);
           // Fallback playback directly if context routing fails
           const fallbackAudio = new Audio('/notification.mp3');
           fallbackAudio.volume = 1.0;
           fallbackAudio.play().catch((fallbackErr) => {
-            console.log('All audio playback attempts failed:', fallbackErr);
+            console.warn('All audio playback attempts failed:', fallbackErr);
           });
         });
       }

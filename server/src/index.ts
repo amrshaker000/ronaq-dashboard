@@ -1,4 +1,3 @@
-// Reload trigger
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -97,7 +96,11 @@ app.use(notFoundHandler);
 // Handle errors
 app.use(errorHandler);
 
-// Start server
-app.listen(env.port, () => {
-  logger.info(`الخادم يعمل بنجاح على المنفذ http://localhost:${env.port} في بيئة ${env.nodeEnv}`);
-});
+// Start server only if not running in Vercel Serverless environment
+if (process.env.VERCEL !== '1') {
+  app.listen(env.port, () => {
+    logger.info(`الخادم يعمل بنجاح على المنفذ http://localhost:${env.port} في بيئة ${env.nodeEnv}`);
+  });
+}
+
+export default app;

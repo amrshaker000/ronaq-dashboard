@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api/v1' : 'http://localhost:3001/api/v1');
 
 async function getHeaders() {
   const headers: Record<string, string> = {
