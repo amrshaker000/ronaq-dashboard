@@ -1,6 +1,7 @@
 {
   "name": "ronaq-dashboard",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Ronaq Dashboard — Inventory & Order Management System",
   "workspaces": [
