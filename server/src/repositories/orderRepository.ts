@@ -127,6 +127,18 @@ export class OrderRepository {
     return data as Order;
   }
 
+  async updateDetails(id: number, updates: Partial<Order>): Promise<Order> {
+    const { data, error } = await this.db
+      .from('orders')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Order;
+  }
+
   async getRecentOrders(limit: number = 10): Promise<Order[]> {
     const { data, error } = await this.db
       .from('orders')

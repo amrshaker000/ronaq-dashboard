@@ -215,7 +215,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         {showDropdown && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
-            <div className="absolute left-0 mt-2 w-80 bg-white rounded-lg border border-neutral-200 shadow-modal z-50 animate-fade-up">
+            <div 
+              className="absolute left-0 mt-2 w-80 bg-white rounded-lg border border-neutral-200 shadow-modal z-50 animate-fade-up"
+              onMouseLeave={() => setShowDropdown(false)}
+            >
               <div className="p-3 border-b border-neutral-100 flex items-center justify-between">
                 <span className="text-body-md font-semibold text-on-surface">الإشعارات</span>
                 {unreadCount > 0 && (

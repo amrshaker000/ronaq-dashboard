@@ -67,6 +67,18 @@ export const updateOrderStatusSchema = z.object({
   payment_status: z.enum(['paid', 'pending']).optional(),
 });
 
+export const updateOrderDetailsSchema = z.object({
+  customer_name: z.string().min(1, 'اسم العميل مطلوب').max(255).regex(/^[a-zA-Z\u0600-\u06FF\s]+$/, 'اسم العميل يجب أن يحتوي على أحرف فقط').optional(),
+  customer_phone: z.string().regex(/^01\d{9}$/, 'رقم الهاتف يجب أن يبدأ بـ 01 ويتكون من 11 رقماً').optional(),
+  customer_governorate: z.string().max(100).optional(),
+  customer_address: z.string().regex(/^[a-zA-Z0-9\u0600-\u06FF\u0660-\u0669\s.,\-\/()#_]+$/, 'العنوان يجب أن يحتوي على أحرف وأرقام ورموز مقبولة فقط').optional(),
+  shipping_cost: z.number().min(0).optional(),
+  discount: z.number().min(0).optional(),
+  payment_method: z.enum(PAYMENT_METHODS).optional(),
+  payment_status: z.enum(['paid', 'pending']).optional(),
+  notes: z.string().optional(),
+});
+
 // ============================================
 // Stock
 // ============================================

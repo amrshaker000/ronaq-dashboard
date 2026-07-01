@@ -91,14 +91,6 @@ export const Orders: React.FC = () => {
           <h2 className="page-title">قائمة الطلبات</h2>
           <p className="page-subtitle">عرض وتتبع جميع الطلبات، تغيير الحالات، وتجهيز شحنات العملاء</p>
         </div>
-        
-        <button
-          onClick={() => navigate('/orders/new')}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-400 text-white font-bold text-body-md hover:bg-brand-500 transition-colors shadow-sm self-start sm:self-auto"
-        >
-          <Plus className="w-5 h-5" />
-          إنشاء طلب جديد
-        </button>
       </div>
 
       {/* Filters Panel */}

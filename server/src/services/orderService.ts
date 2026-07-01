@@ -227,6 +227,44 @@ export class OrderService {
     return updatedOrder;
   }
 
+  async updateOrderDetails(id: number, dto: any, userId: string): Promise<Order> {
+    const order = await orderRepository.findById(id);
+    if (!order) {
+      throw createAppError('الطلب غير موجود.', 404);
+    }
+
+    const updates: Partial<Order> = {};
+    if (dto.customer_name !== undefined) updates.customer_name = dto.customer_name;
+    if (dto.customer_phone !== undefined) updates.customer_phone = dto.customer_phone;
+    if (dto.customer_governorate !== undefined) updates.customer_governorate = dto.customer_governorate;
+    if (dto.customer_address !== undefined) updates.customer_address = dto.customer_address;
+    if (dto.shipping_cost !== undefined) updates.shipping_cost = dto.shipping_cost;
+    if (dto.discount !== undefined) updates.discount = dto.discount;
+    if (dto.payment_method !== undefined) updates.payment_method = dto.payment_method;
+    if (dto.payment_status !== undefined) updates.payment_status = dto.payment_status;
+    if (dto.notes !== undefined) updates.notes = dto.notes;
+
+    // Recalculate total if shipping or discount changed
+    const newShippingCost = dto.shipping_cost !== undefined ? dto.shipping_cost : order.shipping_cost;
+    const newDiscount = dto.discount !== undefined ? dto.discount : order.discount;
+    
+    if (dto.shipping_cost !== undefined || dto.discount !== undefined) {
+      updates.total = order.subtotal + newShippingCost - newDiscount;
+    }
+
+    const updatedOrder = await orderRepository.updateDetails(id, updates);
+
+    await activityLogRepository.log({
+      user_id: userId,
+      action: 'update',
+      entity_type: 'order',
+      entity_id: id,
+      description: `تم تعديل تفاصيل الطلب ${order.order_number}`,
+    });
+
+    return updatedOrder;
+  }
+
   private validateStatusTransition(current: OrderStatus, next: OrderStatus): void {
     if (current === next) return; // Allow updating details/payment status without changing order status
     const validTransitions: Record<OrderStatus, OrderStatus[]> = {

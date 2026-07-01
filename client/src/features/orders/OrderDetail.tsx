@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Play,
   XCircle,
+  Edit,
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
@@ -34,6 +35,7 @@ export const OrderDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   
   // Transition Form State
   const [nextStatus, setNextStatus] = useState<OrderStatus>('processing');
@@ -42,6 +44,17 @@ export const OrderDetail: React.FC = () => {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shippingCompany, setShippingCompany] = useState('');
   const [transitionNotes, setTransitionNotes] = useState('');
+
+  // Edit Order State
+  const [editForm, setEditForm] = useState({
+    customer_name: '',
+    customer_phone: '',
+    customer_governorate: '',
+    customer_address: '',
+    shipping_cost: 0,
+    discount: 0,
+    notes: '',
+  });
 
   const loadData = async () => {
     try {
@@ -140,6 +153,27 @@ export const OrderDetail: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(error.message || 'فشل تحديث الحالة.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      const response = await apiRequest(`/orders/${id}/details`, {
+        method: 'PUT',
+        body: JSON.stringify(editForm),
+      });
+
+      if (response.success) {
+        toast.success('تم تحديث بيانات الطلب بنجاح.');
+        setShowEditModal(false);
+        loadData();
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'فشل تحديث بيانات الطلب.');
     } finally {
       setSubmitting(false);
     }
@@ -376,7 +410,27 @@ export const OrderDetail: React.FC = () => {
                 className="w-full py-2.5 bg-brand-400 hover:bg-brand-500 text-white font-semibold rounded-lg text-body-md flex items-center justify-center gap-2 transition-colors"
               >
                 <Play className="w-5 h-5" />
-                تحديث حالة/تفاصيل الطلب
+                تحديث حالة الطلب
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditForm({
+                    customer_name: order.customer_name,
+                    customer_phone: order.customer_phone,
+                    customer_governorate: order.customer_governorate,
+                    customer_address: order.customer_address,
+                    shipping_cost: order.shipping_cost,
+                    discount: order.discount,
+                    notes: order.notes || '',
+                  });
+                  setShowEditModal(true);
+                }}
+                disabled={submitting}
+                className="w-full py-2.5 bg-neutral-100 hover:bg-neutral-200 text-on-surface font-semibold rounded-lg text-body-md flex items-center justify-center gap-2 transition-colors border border-neutral-200"
+              >
+                <Edit className="w-5 h-5 text-neutral-600" />
+                تعديل بيانات الطلب والعميل
               </button>
 
               {order.status !== 'cancelled' && order.status !== 'returned' && (
@@ -558,6 +612,115 @@ export const OrderDetail: React.FC = () => {
                   className="px-4 py-2 rounded-lg bg-brand-400 hover:bg-brand-500 text-white font-semibold text-body-md"
                 >
                   حفظ وتحديث
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal Popup */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl shadow-modal border border-neutral-200 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fade-up">
+            <h3 className="text-body-lg font-bold text-on-surface border-b border-neutral-100 pb-2 mb-4">
+              تعديل بيانات الطلب
+            </h3>
+            
+            <form onSubmit={handleEditOrder} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-label-sm font-semibold text-on-surface">اسم العميل</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.customer_name}
+                    onChange={(e) => setEditForm({ ...editForm, customer_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-label-sm font-semibold text-on-surface">رقم الهاتف</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.customer_phone}
+                    onChange={(e) => setEditForm({ ...editForm, customer_phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none ltr text-right"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-label-sm font-semibold text-on-surface">المحافظة</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.customer_governorate}
+                    onChange={(e) => setEditForm({ ...editForm, customer_governorate: e.target.value })}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-label-sm font-semibold text-on-surface">العنوان بالتفصيل</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.customer_address}
+                    onChange={(e) => setEditForm({ ...editForm, customer_address: e.target.value })}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-label-sm font-semibold text-on-surface">مصاريف الشحن</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.shipping_cost}
+                    onChange={(e) => setEditForm({ ...editForm, shipping_cost: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-label-sm font-semibold text-on-surface">الخصم</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.discount}
+                    onChange={(e) => setEditForm({ ...editForm, discount: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-label-sm font-semibold text-on-surface">ملاحظات الطلب</label>
+                <textarea
+                  rows={2}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-on-surface font-semibold text-body-md"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 rounded-lg bg-brand-400 hover:bg-brand-500 text-white font-semibold text-body-md"
+                >
+                  حفظ التعديلات
                 </button>
               </div>
             </form>

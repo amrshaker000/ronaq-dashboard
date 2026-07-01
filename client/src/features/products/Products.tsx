@@ -49,6 +49,9 @@ export const Products: React.FC = () => {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
+  // Image Preview State
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockQty, setStockQty] = useState(0);
   const [stockReason, setStockReason] = useState<string>('correction');
@@ -97,7 +100,14 @@ export const Products: React.FC = () => {
 
       const response = await apiRequest<Product[]>(`/products?${params.toString()}`);
       if (response.success) {
-        setProducts(response.data);
+        // Shuffle the products to show them in a random order every time
+        const shuffledProducts = [...response.data];
+        for (let i = shuffledProducts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledProducts[i], shuffledProducts[j]] = [shuffledProducts[j], shuffledProducts[i]];
+        }
+        setProducts(shuffledProducts);
+        
         if (response.pagination) {
           setTotalPages(response.pagination.totalPages);
           setTotalItems(response.pagination.total);
@@ -414,12 +424,17 @@ export const Products: React.FC = () => {
                     className="flex flex-col bg-white border border-neutral-200 rounded-xl overflow-hidden hover:shadow-card-hover transition-shadow duration-200"
                   >
                     {/* Card Image */}
-                    <div className="w-full h-44 bg-neutral-50 relative flex items-center justify-center border-b border-neutral-100 flex-shrink-0">
+                    <div 
+                      className="w-full h-44 bg-neutral-50 relative flex items-center justify-center border-b border-neutral-100 flex-shrink-0 cursor-pointer group"
+                      onClick={() => {
+                        if (prod.image_path) setSelectedImage(prod.image_path);
+                      }}
+                    >
                       {prod.image_path ? (
                         <img
                           src={prod.image_path}
                           alt={prod.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                           }}
@@ -802,6 +817,27 @@ export const Products: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Image Preview Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-opacity"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center animate-fade-up" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Preview" 
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 bg-white/5"
+            />
           </div>
         </div>
       )}

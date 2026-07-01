@@ -10,9 +10,11 @@ import {
   Search,
   Sparkles,
   ShoppingBag as BagIcon,
+  X,
 } from 'lucide-react';
 import type { Product } from '@/types';
 import logoImg from '@/assets/logo.jpg';
+import bgImg from '@/assets/background.png';
 import { toast } from 'sonner';
 
 import { useNavigate } from 'react-router-dom';
@@ -28,11 +30,11 @@ export const Store: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  
+
   // Shopping Cart state ("طلباتي")
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCartDrawer, setShowCartDrawer] = useState(false);
-  
+
   // Checkout Form State
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -41,9 +43,12 @@ export const Store: React.FC = () => {
   const [customerAddress, setCustomerAddress] = useState('');
   const [notes, setNotes] = useState('');
   const [submittingOrder, setSubmittingOrder] = useState(false);
-  
+
   // Success Receipt State
   const [createdOrderNumber, setCreatedOrderNumber] = useState<string | null>(null);
+
+  // Image Preview State
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Load Products
   const loadProducts = async () => {
@@ -51,7 +56,13 @@ export const Store: React.FC = () => {
       setLoading(true);
       const response = await apiRequest<Product[]>('/public/products');
       if (response.success) {
-        setProducts(response.data);
+        // Shuffle the products to show them in a random order every time
+        const shuffledProducts = [...response.data];
+        for (let i = shuffledProducts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledProducts[i], shuffledProducts[j]] = [shuffledProducts[j], shuffledProducts[i]];
+        }
+        setProducts(shuffledProducts);
       }
     } catch (error) {
       console.error('Failed to load products:', error);
@@ -92,7 +103,7 @@ export const Store: React.FC = () => {
             : item
         );
       }
-      toast.success(`تم إضافة "${product.name}" إلى طلباتي.`);
+      toast.success(`تم إضافة "${product.name}" إلى طلبي.`);
       return [...prev, { product, quantity: 1 }];
     });
   };
@@ -117,7 +128,7 @@ export const Store: React.FC = () => {
 
   const removeFromCart = (productId: number) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
-    toast.info('تمت إزالة الملصق من طلباتي.');
+    toast.info('تمت إزالة الملصق من طلبي.');
   };
 
   // Handle checkout submission
@@ -196,7 +207,7 @@ export const Store: React.FC = () => {
             className="relative p-2.5 rounded-full hover:bg-brand-100/30 text-brand-900 transition-colors flex items-center justify-center gap-2 font-bold text-body-md"
           >
             <ShoppingBag className="w-6 h-6" />
-            <span>طلباتي</span>
+            <span>طلبي</span>
             {cart.length > 0 && (
               <span className="absolute -top-0.5 -left-0.5 w-5 h-5 rounded-full bg-brand-400 text-white text-[10px] font-bold flex items-center justify-center shadow-md animate-bounce">
                 {cart.reduce((sum, item) => sum + item.quantity, 0)}
@@ -208,14 +219,22 @@ export const Store: React.FC = () => {
 
       {/* Hero Section */}
       <div className="max-w-6xl mx-auto px-4 mt-6">
-        <div className="card p-6 bg-white/40 text-center space-y-3 relative overflow-hidden">
-          <div className="absolute top-2 right-2 text-brand-400/20">
-            <Sparkles className="w-20 h-20" />
+        <div 
+          className="card p-6 text-center space-y-3 relative overflow-hidden bg-cover bg-center"
+          style={{ backgroundImage: `url(${bgImg})` }}
+        >
+          {/* Overlay to ensure text readability */}
+          <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px]"></div>
+
+          <div className="relative z-10 py-4">
+            <div className="absolute -top-4 -right-4 text-brand-400/30">
+              <Sparkles className="w-24 h-24" />
+            </div>
+            <h2 className="text-headline-lg font-bold text-brand-900 drop-shadow-sm">اختر ملصقاتك المفضلة</h2>
+            <p className="text-body-md text-brand-900 font-semibold max-w-xl mx-auto mt-2 drop-shadow-sm">
+              تصفح مجموعتنا المميزة من الملصقات والستيكرز. أضف ما يعجبك لطلباتك، ثم قم بتأكيد طلبك للحصول على كود التتبع الفريد لمتابعة شحنتك.
+            </p>
           </div>
-          <h2 className="text-headline-lg font-bold text-brand-900">اختر ملصقاتك المفضلة</h2>
-          <p className="text-body-md text-on-surface-variant max-w-xl mx-auto">
-            تصفح مجموعتنا المميزة من الملصقات والستيكرز. أضف ما يعجبك لطلباتك، ثم قم بتأكيد طلبك للحصول على كود التتبع الفريد لمتابعة شحنتك.
-          </p>
         </div>
       </div>
 
@@ -225,7 +244,7 @@ export const Store: React.FC = () => {
         <div className="space-y-4">
           <div className="card p-5 bg-white/40 space-y-4">
             <h3 className="text-body-md font-bold text-on-surface border-b border-neutral-100 pb-2">البحث والتصنيفات</h3>
-            
+
             {/* Search Input */}
             <div className="space-y-1">
               <label className="text-label-sm text-neutral-500">بحث بالاسم أو الرقم التسلسلي</label>
@@ -249,11 +268,10 @@ export const Store: React.FC = () => {
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`px-3 py-1.5 rounded-lg text-right text-body-md transition-colors ${
-                      selectedCategory === category
-                        ? 'bg-brand-400 text-white font-semibold'
-                        : 'hover:bg-brand-100/30 text-on-surface-variant'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-right text-body-md transition-colors ${selectedCategory === category
+                      ? 'bg-brand-400 text-white font-semibold'
+                      : 'hover:bg-brand-100/30 text-on-surface-variant'
+                      }`}
                   >
                     {category === 'All' ? 'جميع التصنيفات' : category}
                   </button>
@@ -278,9 +296,14 @@ export const Store: React.FC = () => {
               {filteredProducts.map((product) => (
                 <div key={product.id} className="card overflow-hidden bg-white/40 flex flex-col justify-between hover:shadow-md transition-shadow">
                   {/* Image */}
-                  <div className="aspect-square bg-neutral-100/50 flex items-center justify-center overflow-hidden relative">
+                  <div
+                    className="aspect-square bg-neutral-100/50 flex items-center justify-center overflow-hidden relative cursor-pointer group"
+                    onClick={() => {
+                      if (product.image_path) setSelectedImage(product.image_path);
+                    }}
+                  >
                     {product.image_path ? (
-                      <img src={product.image_path} alt={product.name} className="w-full h-full object-cover" />
+                      <img src={product.image_path} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <ShoppingBag className="w-12 h-12 text-neutral-300" />
                     )}
@@ -290,7 +313,7 @@ export const Store: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  
+
                   {/* Content */}
                   <div className="p-3 space-y-2">
                     <span className="text-[10px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded font-mono">
@@ -298,14 +321,14 @@ export const Store: React.FC = () => {
                     </span>
                     <h4 className="text-body-md font-bold text-on-surface truncate">{product.name}</h4>
                     <span className="text-[10px] text-neutral-500 block">{product.category}</span>
-                    
+
                     <button
                       onClick={() => addToCart(product)}
                       disabled={product.stock_quantity === 0}
                       className="w-full py-1.5 mt-2 bg-brand-400 hover:bg-brand-500 disabled:bg-neutral-300 text-white font-semibold rounded-lg text-label-sm transition-colors flex items-center justify-center gap-1 shadow-sm"
                     >
                       <Plus className="w-4 h-4" />
-                      إضافة لطلباتي
+                      إضافة للطلب
                     </button>
                   </div>
                 </div>
@@ -320,21 +343,21 @@ export const Store: React.FC = () => {
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/45 backdrop-blur-xs" onClick={() => setShowCartDrawer(false)} />
-          
+
           {/* Drawer Panel */}
           <div className="relative w-full max-w-md h-full bg-[#f2e0b8] border-l border-brand-400/20 shadow-modal p-6 flex flex-col justify-between animate-fade-left">
             <div>
               <div className="flex justify-between items-center border-b border-brand-400/10 pb-3 mb-4">
                 <div className="flex items-center gap-2">
                   <BagIcon className="w-5 h-5 text-brand-900" />
-                  <h3 className="text-body-lg font-bold text-brand-900">الملصقات المحددة (طلباتي)</h3>
+                  <h3 className="text-body-lg font-bold text-brand-900">الملصقات المحددة (طلبي)</h3>
                 </div>
                 <button onClick={() => setShowCartDrawer(false)} className="text-neutral-500 hover:text-on-surface">إغلاق</button>
               </div>
 
               {cart.length === 0 ? (
                 <div className="text-center py-20 text-on-surface-variant space-y-3">
-                  <p>قائمة طلباتك فارغة حالياً.</p>
+                  <p>قائمة طلبك فارغة حالياً.</p>
                   <button
                     onClick={() => setShowCartDrawer(false)}
                     className="text-brand-500 font-semibold underline text-body-md"
@@ -532,6 +555,27 @@ export const Store: React.FC = () => {
             >
               تتبع الطلب الآن
             </button>
+          </div>
+        </div>
+      )}
+      {/* Image Preview Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-opacity"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center animate-fade-up" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={selectedImage}
+              alt="Preview"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 bg-white/5"
+            />
           </div>
         </div>
       )}

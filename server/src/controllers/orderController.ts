@@ -59,6 +59,20 @@ export class OrderController {
     }
   }
 
+  async updateDetails(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await orderService.updateOrderDetails(Number(id), req.body, req.user!.id);
+      res.status(200).json({
+        success: true,
+        message: 'تم تحديث تفاصيل الطلب بنجاح',
+        data: order,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async cancel(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;

@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate.js';
 import {
   createOrderSchema,
   updateOrderStatusSchema,
+  updateOrderDetailsSchema,
   orderFiltersSchema,
   idParamSchema,
 } from '../validators/schemas.js';
@@ -39,6 +40,15 @@ router.put(
   validate(idParamSchema, 'params'),
   validate(updateOrderStatusSchema, 'body'),
   orderController.updateStatus
+);
+
+// Update order details (customer info, shipping, discount, payment)
+router.put(
+  '/:id/details',
+  authenticated,
+  validate(idParamSchema, 'params'),
+  validate(updateOrderDetailsSchema, 'body'),
+  orderController.updateDetails
 );
 
 // Cancel order
