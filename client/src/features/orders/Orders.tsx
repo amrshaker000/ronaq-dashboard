@@ -7,7 +7,7 @@ import {
   ORDER_STATUSES,
   EGYPTIAN_GOVERNORATES,
 } from '@/lib/constants';
-import { Search, Plus, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import type { Order } from '@/types';

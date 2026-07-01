@@ -60,7 +60,9 @@ export const Store: React.FC = () => {
         const shuffledProducts = [...response.data];
         for (let i = shuffledProducts.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
-          [shuffledProducts[i], shuffledProducts[j]] = [shuffledProducts[j], shuffledProducts[i]];
+          const temp = shuffledProducts[i] as Product;
+          shuffledProducts[i] = shuffledProducts[j] as Product;
+          shuffledProducts[j] = temp;
         }
         setProducts(shuffledProducts);
       }
