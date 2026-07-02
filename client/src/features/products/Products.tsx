@@ -427,7 +427,7 @@ export const Products: React.FC = () => {
                   >
                     {/* Card Image */}
                     <div 
-                      className="w-full h-44 bg-neutral-50 relative flex items-center justify-center border-b border-neutral-100 flex-shrink-0 cursor-pointer group"
+                      className="w-full h-44 sticker-bg relative flex items-center justify-center border-b border-neutral-100 flex-shrink-0 cursor-pointer group"
                       onClick={() => {
                         if (prod.image_path) setSelectedImage(prod.image_path);
                       }}
@@ -838,7 +838,7 @@ export const Products: React.FC = () => {
             <img 
               src={selectedImage} 
               alt="Preview" 
-              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 bg-white/5"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 sticker-bg"
             />
           </div>
         </div>

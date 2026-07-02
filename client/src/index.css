@@ -263,4 +263,11 @@
       opacity: 1;
     }
   }
+
+  .sticker-bg {
+    background-image: url('./assets/back_ground.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+  }
 }

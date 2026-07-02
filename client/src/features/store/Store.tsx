@@ -299,7 +299,7 @@ export const Store: React.FC = () => {
                 <div key={product.id} className="card overflow-hidden bg-white/40 flex flex-col justify-between hover:shadow-md transition-shadow">
                   {/* Image */}
                   <div
-                    className="aspect-square bg-neutral-100/50 flex items-center justify-center overflow-hidden relative cursor-pointer group"
+                    className="aspect-square sticker-bg flex items-center justify-center overflow-hidden relative cursor-pointer group"
                     onClick={() => {
                       if (product.image_path) setSelectedImage(product.image_path);
                     }}
@@ -576,7 +576,7 @@ export const Store: React.FC = () => {
             <img
               src={selectedImage}
               alt="Preview"
-              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 bg-white/5"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 sticker-bg"
             />
           </div>
         </div>
