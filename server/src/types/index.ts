@@ -15,17 +15,14 @@ export type ProductCategory =
 export type OrderStatus = 'received' | 'processing' | 'prepared' | 'delivering' | 'delivered' | 'cancelled' | 'returned';
 export type PaymentMethod = 'wallet_instapay' | 'cod';
 
-export type MovementType = 'stock_in' | 'stock_out' | 'adjustment';
-export type MovementReason =
-  | 'new_shipment' | 'order_fulfilled' | 'damage'
-  | 'correction' | 'order_cancelled' | 'initial_stock';
+
 
 export type UserRole = 'admin' | 'employee';
 export type ExpenseCategory = 'printing' | 'packaging' | 'shipping' | 'marketing' | 'other';
 export type NotificationType = 'low_stock' | 'order_update' | 'system' | 'stock_received';
 export type ActivityAction =
   | 'create' | 'update' | 'delete' | 'status_change'
-  | 'stock_adjustment' | 'login' | 'export';
+  | 'login' | 'export';
 
 // ============================================
 // Database Models
@@ -65,9 +62,8 @@ export interface Product {
   category: ProductCategory;
   size: ProductSize;
   price: number;
-  cost_price: number;
-  stock_quantity: number;
-  min_stock_level: number;
+  base_price?: number;
+  discount?: number;
   image_path: string | null;
   description: string | null;
   is_active: boolean;
@@ -76,17 +72,7 @@ export interface Product {
   updated_at: string;
 }
 
-export interface ProductCostHistory {
-  id: number;
-  product_id: number;
-  cost_price: number;
-  supplier_id: number | null;
-  quantity: number;
-  effective_date: string;
-  notes: string | null;
-  created_by: string | null;
-  created_at: string;
-}
+
 
 export interface Order {
   id: number;
@@ -113,12 +99,16 @@ export interface Order {
 export interface OrderItem {
   id: number;
   order_id: number;
-  product_id: number;
+  product_id: number | null;
   product_name: string;
   serial_number: string;
   quantity: number;
   unit_price: number;
   total_price: number;
+  material: string;
+  is_custom: boolean;
+  custom_image_url: string | null;
+  custom_size: string | null;
   created_at: string;
 }
 
@@ -132,20 +122,7 @@ export interface OrderStatusLog {
   created_at: string;
 }
 
-export interface StockMovement {
-  id: number;
-  product_id: number;
-  movement_type: MovementType;
-  quantity: number;
-  before_quantity: number;
-  after_quantity: number;
-  reason: MovementReason;
-  supplier_id: number | null;
-  order_id: number | null;
-  notes: string | null;
-  performed_by: string | null;
-  created_at: string;
-}
+
 
 export interface Expense {
   id: number;
@@ -242,7 +219,6 @@ export interface ProductFilters extends PaginationParams {
   search?: string;
   category?: ProductCategory;
   size?: ProductSize;
-  stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
@@ -258,12 +234,7 @@ export interface OrderFilters extends PaginationParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface StockMovementFilters extends PaginationParams {
-  productId?: number;
-  movementType?: MovementType;
-  dateFrom?: string;
-  dateTo?: string;
-}
+
 
 export interface ExpenseFilters extends PaginationParams {
   category?: ExpenseCategory;
@@ -286,9 +257,8 @@ export interface CreateProductDTO {
   category: ProductCategory;
   size: ProductSize;
   price: number;
-  cost_price: number;
-  stock_quantity: number;
-  min_stock_level?: number;
+  base_price?: number;
+  discount?: number;
   image_path?: string;
   description?: string;
 }
@@ -298,8 +268,8 @@ export interface UpdateProductDTO {
   category?: ProductCategory;
   size?: ProductSize;
   price?: number;
-  cost_price?: number;
-  min_stock_level?: number;
+  base_price?: number;
+  discount?: number;
   image_path?: string;
   description?: string;
 }
@@ -319,6 +289,10 @@ export interface CreateOrderDTO {
 export interface CreateOrderItemDTO {
   product_id: number;
   quantity: number;
+  material?: string;
+  is_custom?: boolean;
+  custom_image_url?: string;
+  custom_size?: string;
 }
 
 export interface UpdateOrderStatusDTO {
@@ -330,22 +304,7 @@ export interface UpdateOrderStatusDTO {
   payment_status?: 'paid' | 'pending';
 }
 
-export interface StockAdjustmentDTO {
-  product_id: number;
-  quantity: number;
-  reason: MovementReason;
-  notes?: string;
-}
 
-export interface ReceiveShipmentDTO {
-  supplier_id?: number;
-  items: {
-    product_id: number;
-    quantity: number;
-    cost_price?: number;
-  }[];
-  notes?: string;
-}
 
 export interface CreateExpenseDTO {
   category: ExpenseCategory;

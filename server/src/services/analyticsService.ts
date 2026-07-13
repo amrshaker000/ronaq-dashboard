@@ -9,14 +9,12 @@ export class AnalyticsService {
     const [
       todayRevenue,
       activeOrders,
-      lowStock,
       totalProducts,
       todayOrders,
       statusCounts,
     ] = await Promise.all([
       orderRepository.getTodayRevenue(),
       orderRepository.getActiveOrdersCount(),
-      productRepository.findLowStock(),
       productRepository.countAll(),
       orderRepository.getTodayOrdersCount(),
       orderRepository.countByStatus(),
@@ -25,8 +23,6 @@ export class AnalyticsService {
     return {
       todayRevenue,
       activeOrders,
-      lowStockCount: lowStock.length,
-      lowStockProducts: lowStock,
       totalProducts,
       todayOrders,
       statusCounts,
@@ -40,7 +36,6 @@ export class AnalyticsService {
       topProducts,
       salesByGovernorate,
       averageOrderValue,
-      inventoryValue,
       topCustomers,
       monthlyGrowth,
       repeatCustomers,
@@ -52,7 +47,6 @@ export class AnalyticsService {
       analyticsRepository.getTopSellingProducts(range),
       analyticsRepository.getSalesByGovernorate(range),
       analyticsRepository.getAverageOrderValue(range),
-      productRepository.getInventoryValue(),
       analyticsRepository.getTopCustomers(range),
       analyticsRepository.getMonthlyGrowth(range),
       analyticsRepository.getRepeatCustomers(range),
@@ -62,7 +56,7 @@ export class AnalyticsService {
 
     // Group revenue by day for chart
     const revenueByDay: Record<string, number> = {};
-    revenueData.forEach((r) => {
+    revenueData.forEach((r: any) => {
       const item = r as { total: number; created_at: string };
       const day = item.created_at.split('T')[0]!;
       revenueByDay[day] = (revenueByDay[day] || 0) + Number(item.total);
@@ -74,7 +68,6 @@ export class AnalyticsService {
       topProducts,
       salesByGovernorate,
       averageOrderValue,
-      inventoryValue,
       topCustomers,
       monthlyGrowth,
       repeatCustomers,

@@ -4,7 +4,6 @@ import {
   PRODUCT_SIZES,
   ORDER_STATUSES,
   PAYMENT_METHODS,
-  MOVEMENT_REASONS,
   EXPENSE_CATEGORIES,
   USER_ROLES,
 } from '../config/constants.js';
@@ -19,9 +18,8 @@ export const createProductSchema = z.object({
   category: z.enum(PRODUCT_CATEGORIES, { message: 'التصنيف غير صالح' }),
   size: z.enum(PRODUCT_SIZES, { message: 'المقاس غير صالح' }),
   price: z.number().min(0, 'السعر يجب أن يكون 0 أو أكثر'),
-  cost_price: z.number().min(0, 'سعر التكلفة يجب أن يكون 0 أو أكثر'),
-  stock_quantity: z.number().int().min(0, 'الكمية يجب أن تكون 0 أو أكثر'),
-  min_stock_level: z.number().int().min(0).optional().default(2),
+  base_price: z.number().min(0).optional(),
+  discount: z.number().min(0).max(100).optional(),
   image_path: z.string().optional(),
   description: z.string().optional(),
 });
@@ -31,8 +29,8 @@ export const updateProductSchema = z.object({
   category: z.enum(PRODUCT_CATEGORIES).optional(),
   size: z.enum(PRODUCT_SIZES).optional(),
   price: z.number().min(0).optional(),
-  cost_price: z.number().min(0).optional(),
-  min_stock_level: z.number().int().min(0).optional(),
+  base_price: z.number().min(0).optional(),
+  discount: z.number().min(0).max(100).optional(),
   image_path: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
 });
@@ -42,8 +40,12 @@ export const updateProductSchema = z.object({
 // ============================================
 
 export const createOrderItemSchema = z.object({
-  product_id: z.number().int().positive('معرف المنتج مطلوب'),
+  product_id: z.number().int().positive('معرف المنتج مطلوب').optional(),
   quantity: z.number().int().positive('الكمية يجب أن تكون 1 أو أكثر'),
+  material: z.string().optional(),
+  is_custom: z.boolean().optional(),
+  custom_image_url: z.string().optional(),
+  custom_size: z.string().optional(),
 });
 
 export const createOrderSchema = z.object({
@@ -79,28 +81,7 @@ export const updateOrderDetailsSchema = z.object({
   notes: z.string().optional(),
 });
 
-// ============================================
-// Stock
-// ============================================
 
-export const stockAdjustmentSchema = z.object({
-  product_id: z.number().int().positive(),
-  quantity: z.number().int().refine((n) => n !== 0, { message: 'الكمية لا يمكن أن تكون صفر' }),
-  reason: z.enum(MOVEMENT_REASONS, { message: 'سبب الحركة غير صالح' }),
-  notes: z.string().optional(),
-});
-
-export const receiveShipmentSchema = z.object({
-  supplier_id: z.number().int().positive().optional(),
-  items: z.array(z.object({
-    product_id: z.number().int().positive(),
-    quantity: z.number().int().positive('الكمية يجب أن تكون 1 أو أكثر'),
-    cost_price: z.number().min(0).optional(),
-  })).min(1, 'يجب إضافة منتج واحد على الأقل'),
-  notes: z.string().optional(),
-});
-
-// ============================================
 // Expenses
 // ============================================
 
@@ -131,7 +112,6 @@ export const updateSettingsSchema = z.object({
   free_shipping_threshold: z.number().min(0).optional(),
   order_number_prefix: z.string().min(1).max(10).optional(),
   default_shipping_cost: z.number().min(0).optional(),
-  low_stock_threshold: z.number().int().min(0).optional(),
 });
 
 // ============================================
@@ -159,7 +139,6 @@ export const productFiltersSchema = paginationSchema.extend({
   search: z.string().optional(),
   category: z.enum(PRODUCT_CATEGORIES).optional(),
   size: z.enum(PRODUCT_SIZES).optional(),
-  stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']).optional(),
   sortBy: z.string().optional().default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
@@ -175,12 +154,7 @@ export const orderFiltersSchema = paginationSchema.extend({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
 
-export const movementFiltersSchema = paginationSchema.extend({
-  productId: z.coerce.number().int().optional(),
-  movementType: z.enum(['stock_in', 'stock_out', 'adjustment'] as const).optional(),
-  dateFrom: z.string().optional(),
-  dateTo: z.string().optional(),
-});
+
 
 export const expenseFiltersSchema = paginationSchema.extend({
   category: z.enum(EXPENSE_CATEGORIES).optional(),

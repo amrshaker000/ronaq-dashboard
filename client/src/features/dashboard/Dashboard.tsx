@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   TrendingUp,
   ShoppingBag,
-  AlertTriangle,
   ArrowLeft,
   Clock,
 } from 'lucide-react';
@@ -18,7 +17,6 @@ import type { Order } from '@/types';
 interface DashboardMetrics {
   todayRevenue: number;
   activeOrders: number;
-  lowStockCount: number;
   totalProducts: number;
   todayOrders: number;
   statusCounts: Record<string, number>;
@@ -83,7 +81,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Revenue Card (Admin Only) */}
         {isAdmin && (
           <div className="metric-card bg-white hover:shadow-card-hover transition-shadow duration-200">
@@ -123,19 +121,6 @@ export const Dashboard: React.FC = () => {
             </div>
             <div className="p-3 bg-warning-light rounded-lg text-warning-dark">
               <Clock className="w-6 h-6" />
-            </div>
-          </div>
-        </div>
-
-        {/* Low Stock Alerts */}
-        <div className="metric-card bg-white hover:shadow-card-hover transition-shadow duration-200">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <span className="metric-label">ملصقات منخفضة المخزون</span>
-              <h3 className="metric-value text-danger-dark">{metrics?.lowStockCount || 0}</h3>
-            </div>
-            <div className="p-3 bg-danger-light rounded-lg text-danger-dark">
-              <AlertTriangle className="w-6 h-6" />
             </div>
           </div>
         </div>

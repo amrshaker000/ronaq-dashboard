@@ -12,11 +12,10 @@ import { Products } from '@/features/products/Products';
 import { Orders } from '@/features/orders/Orders';
 import { NewOrder } from '@/features/orders/NewOrder';
 import { OrderDetail } from '@/features/orders/OrderDetail';
-import { Stock } from '@/features/stock/Stock';
-import { Expenses } from '@/features/expenses/Expenses';
 import { Settings } from '@/features/settings/Settings';
 import { Store } from '@/features/store/Store';
 import { TrackOrder } from '@/features/store/TrackOrder';
+import { Accounts } from '@/features/accounting/Accounts';
 
 export const App: React.FC = () => {
   return (
@@ -79,25 +78,18 @@ export const App: React.FC = () => {
               }
             />
 
-            {/* Stock history and reception (Admin Only) */}
+
+
+            {/* Accounts/Financials (Admin Only) */}
             <Route
-              path="/stock"
+              path="/accounts"
               element={
                 <AuthGuard requireAdmin>
-                  <Stock />
+                  <Accounts />
                 </AuthGuard>
               }
             />
 
-            {/* Expenses and P&L statements (Admin Only) */}
-            <Route
-              path="/expenses"
-              element={
-                <AuthGuard requireAdmin>
-                  <Expenses />
-                </AuthGuard>
-              }
-            />
 
             {/* General Settings and User profiles (Admin Only) */}
             <Route

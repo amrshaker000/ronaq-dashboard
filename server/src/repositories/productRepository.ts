@@ -31,13 +31,7 @@ export class ProductRepository {
     if (filters.size) {
       query = query.eq('size', filters.size);
     }
-    if (filters.stockStatus === 'out_of_stock') {
-      query = query.eq('stock_quantity', 0);
-    } else if (filters.stockStatus === 'low_stock') {
-      query = query.gt('stock_quantity', 0).lte('stock_quantity', 2);
-    } else if (filters.stockStatus === 'in_stock') {
-      query = query.gt('stock_quantity', 2);
-    }
+
 
     // Sorting
     const sortBy = filters.sortBy || 'created_at';
@@ -112,26 +106,7 @@ export class ProductRepository {
     if (error) throw error;
   }
 
-  async updateStock(id: number, newQuantity: number): Promise<void> {
-    const { error } = await this.db
-      .from('products')
-      .update({ stock_quantity: newQuantity })
-      .eq('id', id);
 
-    if (error) throw error;
-  }
-
-  async findLowStock(threshold: number = 2): Promise<Product[]> {
-    const { data, error } = await this.db
-      .from('products')
-      .select('*')
-      .is('deleted_at', null)
-      .lte('stock_quantity', threshold)
-      .order('stock_quantity', { ascending: true });
-
-    if (error) throw error;
-    return (data as Product[]) || [];
-  }
 
   async findByIds(ids: number[]): Promise<Product[]> {
     const { data, error } = await this.db
@@ -154,19 +129,7 @@ export class ProductRepository {
     return count || 0;
   }
 
-  async getInventoryValue(): Promise<number> {
-    const { data, error } = await this.db
-      .from('products')
-      .select('cost_price, stock_quantity')
-      .is('deleted_at', null)
-      .gt('stock_quantity', 0);
 
-    if (error) throw error;
-    return (data || []).reduce(
-      (sum, p) => sum + Number(p.cost_price) * Number(p.stock_quantity),
-      0
-    );
-  }
 }
 
 export const productRepository = new ProductRepository();

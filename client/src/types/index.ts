@@ -9,14 +9,7 @@ export type ProductCategory =
 export type OrderStatus = 'received' | 'processing' | 'prepared' | 'delivering' | 'delivered' | 'cancelled' | 'returned';
 export type PaymentMethod = 'wallet_instapay' | 'cod';
 
-export type MovementType = 'stock_in' | 'stock_out' | 'adjustment';
-export type MovementReason =
-  | 'new_shipment'
-  | 'order_fulfilled'
-  | 'damage'
-  | 'correction'
-  | 'order_cancelled'
-  | 'initial_stock';
+
 
 export type UserRole = 'admin' | 'employee';
 export type ExpenseCategory = 'printing' | 'packaging' | 'shipping' | 'marketing' | 'other';
@@ -26,7 +19,6 @@ export type ActivityAction =
   | 'update'
   | 'delete'
   | 'status_change'
-  | 'stock_adjustment'
   | 'login'
   | 'export';
 
@@ -50,9 +42,8 @@ export interface Product {
   category: ProductCategory;
   size: ProductSize;
   price: number;
-  cost_price: number;
-  stock_quantity: number;
-  min_stock_level: number;
+  base_price?: number;
+  discount?: number;
   image_path: string | null;
   description: string | null;
   is_active: boolean;
@@ -86,12 +77,16 @@ export interface Order {
 export interface OrderItem {
   id: number;
   order_id: number;
-  product_id: number;
+  product_id: number | null;
   product_name: string;
   serial_number: string;
   quantity: number;
   unit_price: number;
   total_price: number;
+  material: string;
+  is_custom: boolean;
+  custom_image_url: string | null;
+  custom_size: string | null;
   created_at: string;
 }
 
@@ -108,20 +103,7 @@ export interface OrderStatusLog {
   };
 }
 
-export interface StockMovement {
-  id: number;
-  product_id: number;
-  movement_type: MovementType;
-  quantity: number;
-  before_quantity: number;
-  after_quantity: number;
-  reason: MovementReason;
-  supplier_id: number | null;
-  order_id: number | null;
-  notes: string | null;
-  performed_by: string | null;
-  created_at: string;
-}
+
 
 export interface Expense {
   id: number;

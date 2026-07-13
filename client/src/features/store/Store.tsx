@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { EGYPTIAN_GOVERNORATES } from '@/lib/constants';
 import {
+  Menu,
   ShoppingBag,
   Plus,
   Minus,
@@ -14,7 +16,6 @@ import {
 } from 'lucide-react';
 import type { Product } from '@/types';
 import logoImg from '@/assets/logo.jpg';
-import bgImg from '@/assets/background.png';
 import { toast } from 'sonner';
 
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +23,12 @@ import { useNavigate } from 'react-router-dom';
 interface CartItem {
   product: Product;
   quantity: number;
+  is_custom?: boolean;
+  material?: 'glossy' | 'matte';
+  custom_size?: string;
+  custom_image_url?: string;
+  custom_image_file?: File;
+  custom_price?: number;
 }
 
 export const Store: React.FC = () => {
@@ -49,6 +56,67 @@ export const Store: React.FC = () => {
 
   // Image Preview State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Custom Sticker State
+  const [showCustomStickerModal, setShowCustomStickerModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [customImageFile, setCustomImageFile] = useState<File | null>(null);
+  const [customImagePreview, setCustomImagePreview] = useState<string>('');
+  const [customSize, setCustomSize] = useState<string>('3*3');
+  const [customMaterial, setCustomMaterial] = useState<'glossy' | 'matte'>('matte');
+  const customSizes = ['3*3', '4*4', '5*5', '6*6', '7*7', '8*8'];
+
+  // Hero Image Slider State
+  const HERO_IMAGES = [
+    '/Hero/17-7.png',
+    '/Hero/21-7.png',
+    '/Hero/25-7.png',
+    '/Hero/29-7.png',
+    '/Hero/31-7.png',
+    '/Hero/6.jpg',
+    '/Hero/pexels-alex-azabache-11921369-6960384.jpg',
+    '/Hero/pexels-caffeine-29021198.jpg',
+    '/Hero/pexels-chelsey-horne-21698-4506939.jpg',
+    '/Hero/pexels-ekaterina-bolovtsova-6192124.jpg',
+    '/Hero/pexels-helloiamtugce-25435665.jpg',
+    '/Hero/pexels-saramazin-19899874.jpg',
+    '/Hero/pexels-solemaind-503041838-6079.jpg'
+  ];
+
+  const [heroImage, setHeroImage] = useState(HERO_IMAGES[0] || '');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      let nextImage = heroImage;
+      while (nextImage === heroImage) {
+        const randomIndex = Math.floor(Math.random() * HERO_IMAGES.length);
+        nextImage = HERO_IMAGES[randomIndex] || '';
+      }
+      setHeroImage(nextImage);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [heroImage]);
+
+  const calculateCustomPrice = (sizeStr: string, material: 'glossy' | 'matte') => {
+    const size = parseInt(sizeStr.split('*')[0] || '', 10);
+    if (isNaN(size)) return 20;
+    const basePrice = material === 'glossy' ? 20 : 25;
+    const sizeAddition = Math.max(0, size - 3) * 5;
+    return basePrice + sizeAddition;
+  };
+
+  const handleCustomFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCustomImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCustomImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Load Products
   const loadProducts = async () => {
@@ -91,23 +159,52 @@ export const Store: React.FC = () => {
   });
 
   // Cart actions
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, isCustom = false) => {
     setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        if (existing.quantity >= product.stock_quantity) {
-          toast.error(`المخزون المتوفر غير كافٍ. المتوفر فقط: ${product.stock_quantity}`);
+      if (isCustom) {
+        if (!customImageFile) {
+          toast.error('يرجى رفع صورة التصميم المطلوب أولاً.');
           return prev;
         }
+        toast.success(`تم إضافة "استيكر مخصوص" إلى طلبي.`);
+        return [...prev, {
+          product: { ...product, id: Date.now() }, // Generate temporary ID for custom stickers
+          quantity: 1,
+          is_custom: true,
+          material: customMaterial,
+          custom_size: customSize,
+          custom_image_url: customImagePreview,
+          custom_image_file: customImageFile,
+          custom_price: calculateCustomPrice(customSize, customMaterial)
+        }];
+      }
+
+      const existing = prev.find((item) => item.product.id === product.id && !item.is_custom);
+      if (existing) {
         return prev.map((item) =>
-          item.product.id === product.id
+          item.product.id === product.id && !item.is_custom
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
       toast.success(`تم إضافة "${product.name}" إلى طلبي.`);
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, quantity: 1, material: 'matte', custom_price: 10 }]; // Standard price is 10
     });
+  };
+
+  const updateMaterial = (productId: number, material: 'glossy' | 'matte') => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.product.id === productId) {
+          return {
+            ...item,
+            material,
+            custom_price: item.is_custom ? calculateCustomPrice(item.custom_size || '3*3', material) : item.custom_price
+          };
+        }
+        return item;
+      })
+    );
   };
 
   const updateQuantity = (productId: number, delta: number) => {
@@ -116,10 +213,6 @@ export const Store: React.FC = () => {
         .map((item) => {
           if (item.product.id === productId) {
             const nextQty = item.quantity + delta;
-            if (nextQty > item.product.stock_quantity) {
-              toast.error(`عذراً، المخزون المتاح فقط: ${item.product.stock_quantity}`);
-              return item;
-            }
             return { ...item, quantity: nextQty };
           }
           return item;
@@ -161,6 +254,43 @@ export const Store: React.FC = () => {
 
     try {
       setSubmittingOrder(true);
+      
+      const itemsPayload = await Promise.all(cart.map(async (item) => {
+        let finalImageUrl = item.custom_image_url;
+
+        if (item.is_custom && item.custom_image_file) {
+          const fileExt = item.custom_image_file.name.split('.').pop();
+          const fileName = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+          const filePath = `orders/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(filePath, item.custom_image_file, {
+              cacheControl: '3600',
+              upsert: false,
+            });
+
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('product-images')
+              .getPublicUrl(filePath);
+            finalImageUrl = publicUrl;
+          } else {
+             console.error("Upload error", uploadError);
+          }
+        }
+
+        return {
+          product_id: item.is_custom ? null : item.product.id,
+          quantity: item.quantity,
+          is_custom: item.is_custom || false,
+          material: item.material || 'glossy',
+          custom_size: item.custom_size,
+          custom_image_url: finalImageUrl,
+          price: item.custom_price || 10
+        };
+      }));
+
       const payload = {
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
@@ -168,10 +298,7 @@ export const Store: React.FC = () => {
         customer_address: customerAddress.trim(),
         payment_method: 'cod', // Default guest payment method
         notes: notes || undefined,
-        items: cart.map((item) => ({
-          product_id: item.product.id,
-          quantity: item.quantity,
-        })),
+        items: itemsPayload,
       };
 
       const response = await apiRequest<{ order_number: string }>('/public/orders', {
@@ -204,37 +331,36 @@ export const Store: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowCartDrawer(true)}
-            className="relative p-2.5 rounded-full hover:bg-brand-100/30 text-brand-900 transition-colors flex items-center justify-center gap-2 font-bold text-body-md"
-          >
-            <ShoppingBag className="w-6 h-6" />
-            <span>طلبي</span>
-            {cart.length > 0 && (
-              <span className="absolute -top-0.5 -left-0.5 w-5 h-5 rounded-full bg-brand-400 text-white text-[10px] font-bold flex items-center justify-center shadow-md animate-bounce">
-                {cart.reduce((sum, item) => sum + item.quantity, 0)}
-              </span>
-            )}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMobileMenu(true)}
+              className="relative p-2.5 rounded-full hover:bg-brand-100/30 text-brand-900 transition-colors flex items-center justify-center gap-2 font-bold text-body-md"
+            >
+              <Menu className="w-6 h-6" />
+              {cart.length > 0 && (
+                <span className="absolute top-2 left-2 w-2.5 h-2.5 rounded-full bg-brand-400 border border-white"></span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Hero Section */}
       <div className="max-w-6xl mx-auto px-4 mt-6">
-        <div 
-          className="card p-6 text-center space-y-3 relative overflow-hidden bg-cover bg-center"
-          style={{ backgroundImage: `url(${bgImg})` }}
-        >
-          {/* Overlay to ensure text readability */}
-          <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px]"></div>
+        <div className="relative h-[220px] md:h-[300px] rounded-2xl overflow-hidden shadow-lg border border-brand-400/20 bg-neutral-900">
+          {/* Animated Background Image */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out transform scale-105"
+            style={{ backgroundImage: `url(${heroImage})` }}
+          />
+          {/* Overlay gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
-          <div className="relative z-10 py-4">
-            <div className="absolute -top-4 -right-4 text-brand-400/30">
-              <Sparkles className="w-24 h-24" />
-            </div>
-            <h2 className="text-headline-lg font-bold text-brand-900 drop-shadow-sm">اختر ملصقاتك المفضلة</h2>
-            <p className="text-body-md text-brand-900 font-semibold max-w-xl mx-auto mt-2 drop-shadow-sm">
-              تصفح مجموعتنا المميزة من الملصقات والستيكرز. أضف ما يعجبك لطلباتك، ثم قم بتأكيد طلبك للحصول على كود التتبع الفريد لمتابعة شحنتك.
+          {/* Floating content */}
+          <div className="absolute bottom-0 right-0 left-0 p-6 md:p-8 text-right text-white space-y-2 z-10 animate-fade-in">
+            <h2 className="text-xl md:text-3xl font-extrabold drop-shadow-md">ستيكرز رونق المميّزة</h2>
+            <p className="text-body-md text-neutral-200 font-medium max-w-xl drop-shadow-sm">
+              أفضل الخامات والجودة العالية لتزيين أغراضك المفضلة وتجسيد أسلوبك الخاص.
             </p>
           </div>
         </div>
@@ -284,7 +410,8 @@ export const Store: React.FC = () => {
         </div>
 
         {/* Stickers Grid */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 space-y-6">
+          {/* Custom Sticker Section Moved to Modal */}
           {loading ? (
             <div className="flex justify-center items-center py-20">
               <span className="text-body-md text-brand-400 animate-pulse">جاري تحميل المنتجات...</span>
@@ -309,11 +436,6 @@ export const Store: React.FC = () => {
                     ) : (
                       <ShoppingBag className="w-12 h-12 text-neutral-300" />
                     )}
-                    {product.stock_quantity === 0 && (
-                      <span className="absolute inset-0 bg-black/40 flex items-center justify-center text-white font-bold text-body-md">
-                        نفذ المخزون
-                      </span>
-                    )}
                   </div>
 
                   {/* Content */}
@@ -323,10 +445,13 @@ export const Store: React.FC = () => {
                     </span>
                     <h4 className="text-body-md font-bold text-on-surface truncate">{product.name}</h4>
                     <span className="text-[10px] text-neutral-500 block">{product.category}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-body-md font-bold text-brand-500">10 ج.م</span>
+                      <span className="text-[11px] text-neutral-400 line-through">30 ج.م</span>
+                    </div>
 
                     <button
                       onClick={() => addToCart(product)}
-                      disabled={product.stock_quantity === 0}
                       className="w-full py-1.5 mt-2 bg-brand-400 hover:bg-brand-500 disabled:bg-neutral-300 text-white font-semibold rounded-lg text-label-sm transition-colors flex items-center justify-center gap-1 shadow-sm"
                     >
                       <Plus className="w-4 h-4" />
@@ -344,10 +469,10 @@ export const Store: React.FC = () => {
       {showCartDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-xs" onClick={() => setShowCartDrawer(false)} />
+          <div className="absolute inset-0 bg-black/45 backdrop-blur-md animate-fade-in" onClick={() => setShowCartDrawer(false)} />
 
           {/* Drawer Panel */}
-          <div className="relative w-full max-w-md h-full bg-[#f2e0b8] border-l border-brand-400/20 shadow-modal p-6 flex flex-col justify-between animate-fade-left">
+          <div className="relative w-full max-w-md h-full glass-panel shadow-modal p-6 flex flex-col justify-between animate-glass-drawer">
             <div>
               <div className="flex justify-between items-center border-b border-brand-400/10 pb-3 mb-4">
                 <div className="flex items-center gap-2">
@@ -382,25 +507,42 @@ export const Store: React.FC = () => {
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-body-md font-bold text-on-surface truncate">{item.product.name}</h4>
-                        <span className="text-[10px] text-neutral-500">{item.product.category}</span>
+                        <h4 className="text-body-md font-bold text-on-surface truncate">
+                          {item.is_custom ? 'استيكر مخصوص' : item.product.name}
+                        </h4>
+                        <span className="text-[10px] text-neutral-500 flex gap-1">
+                          {item.is_custom ? `${item.custom_size} سم` : item.product.category}
+                        </span>
+                        <span className="text-[11px] font-bold text-brand-500 block">
+                          {item.custom_price} ج.م
+                        </span>
                       </div>
 
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateQuantity(item.product.id, -1)}
-                          className="p-1 rounded bg-neutral-200 hover:bg-neutral-300"
+                      {/* Quantity & Material Controls */}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center bg-white border border-neutral-200 rounded-lg p-0.5">
+                          <button
+                            onClick={() => updateQuantity(item.product.id, -1)}
+                            className="p-1 rounded bg-neutral-100 hover:bg-neutral-200"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="font-semibold text-body-md font-mono w-6 text-center">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.product.id, 1)}
+                            className="p-1 rounded bg-neutral-100 hover:bg-neutral-200"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <select
+                          value={item.material || 'matte'}
+                          onChange={(e) => updateMaterial(item.product.id, e.target.value as 'glossy' | 'matte')}
+                          className="px-2 py-0.5 border border-neutral-200 rounded text-[10px] focus:border-brand-400 focus:outline-none bg-white text-neutral-600 font-semibold cursor-pointer"
                         >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="font-semibold text-body-md font-mono">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.product.id, 1)}
-                          className="p-1 rounded bg-neutral-200 hover:bg-neutral-300"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
+                          <option value="glossy">لامع</option>
+                          <option value="matte">مط</option>
+                        </select>
                       </div>
 
                       {/* Remove Button */}
@@ -418,7 +560,13 @@ export const Store: React.FC = () => {
 
             {/* Actions */}
             {cart.length > 0 && (
-              <div className="border-t border-brand-400/10 pt-4">
+              <div className="border-t border-brand-400/10 pt-4 space-y-4">
+                <div className="flex justify-between items-center px-2">
+                  <span className="text-body-md font-semibold text-brand-900">إجمالي الطلب (بدون الشحن)</span>
+                  <span className="text-body-lg font-bold text-brand-500">
+                    {cart.reduce((sum, item) => sum + ((item.custom_price || 10) * item.quantity), 0)} ج.م
+                  </span>
+                </div>
                 <button
                   onClick={() => {
                     setShowCartDrawer(false);
@@ -508,6 +656,26 @@ export const Store: React.FC = () => {
                 />
               </div>
 
+              {/* Order Summary */}
+              <div className="bg-white/60 p-4 rounded-xl border border-brand-400/20 space-y-2 mt-4">
+                <div className="flex justify-between items-center text-body-md text-brand-900">
+                  <span>إجمالي الملصقات:</span>
+                  <span className="font-semibold">{cart.reduce((sum, item) => sum + ((item.custom_price || 10) * item.quantity), 0)} ج.م</span>
+                </div>
+                <div className="flex justify-between items-center text-body-md text-brand-900">
+                  <span>مصاريف الشحن ({customerGovernorate}):</span>
+                  <span className="font-semibold">
+                    {['القاهرة', 'الجيزة'].includes(customerGovernorate) ? 40 : customerGovernorate === 'الإسكندرية' ? 50 : 60} ج.م
+                  </span>
+                </div>
+                <div className="border-t border-brand-400/10 pt-2 flex justify-between items-center">
+                  <span className="text-body-lg font-bold text-brand-900">الإجمالي النهائي:</span>
+                  <span className="text-headline-sm font-black text-brand-500">
+                    {cart.reduce((sum, item) => sum + ((item.custom_price || 10) * item.quantity), 0) + (['القاهرة', 'الجيزة'].includes(customerGovernorate) ? 40 : customerGovernorate === 'الإسكندرية' ? 50 : 60)} ج.م
+                  </span>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={submittingOrder}
@@ -578,6 +746,125 @@ export const Store: React.FC = () => {
               alt="Preview"
               className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/10 sticker-bg"
             />
+          </div>
+        </div>
+      )}
+      {/* Custom Sticker Modal */}
+      {showCustomStickerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/45 backdrop-blur-xs" onClick={() => setShowCustomStickerModal(false)} />
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-modal overflow-hidden animate-fade-in">
+            <div className="p-4 border-b border-brand-100 flex items-center justify-between bg-brand-50/30">
+              <h3 className="text-body-lg font-bold text-brand-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                صمم استيكر مخصوص لك
+              </h3>
+              <button onClick={() => setShowCustomStickerModal(false)} className="p-1.5 hover:bg-white rounded-lg text-neutral-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-label-sm font-semibold">ارفع صورة التصميم *</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCustomFileChange}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                  />
+                  {customImagePreview && (
+                    <img src={customImagePreview} alt="Preview" className="mt-2 w-16 h-16 object-cover rounded-lg border border-neutral-200" />
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-label-sm font-semibold">المقاس</label>
+                    <select
+                      value={customSize}
+                      onChange={(e) => setCustomSize(e.target.value)}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none bg-white"
+                    >
+                      {customSizes.map(size => (
+                        <option key={size} value={size}>{size} سم</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-label-sm font-semibold">الخامة</label>
+                    <select
+                      value={customMaterial}
+                      onChange={(e) => setCustomMaterial(e.target.value as 'glossy' | 'matte')}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none bg-white"
+                    >
+                      <option value="glossy">لامع (Glossy)</option>
+                      <option value="matte">مط (Matte)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-brand-50/30 border-t border-brand-100 flex items-center justify-between">
+              <div className="text-body-md">
+                السعر المتوقع: <span className="font-bold text-brand-500 text-lg">{calculateCustomPrice(customSize, customMaterial)} جنيه</span>
+              </div>
+              <button
+                onClick={() => {
+                  if (customImageFile) {
+                    addToCart({ name: 'استيكر مخصوص' } as any, true);
+                    setShowCustomStickerModal(false);
+                    setCustomImageFile(null);
+                    setCustomImagePreview('');
+                  } else {
+                    toast.error('يرجى رفع صورة التصميم المطلوب أولاً.');
+                  }
+                }}
+                className="px-6 py-2 bg-brand-400 hover:bg-brand-500 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                إضافة للطلب
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Burger Menu Sidebar */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/45 backdrop-blur-md animate-fade-in" onClick={() => setShowMobileMenu(false)} />
+          <div className="relative w-64 h-full glass-panel shadow-modal p-6 flex flex-col animate-glass-drawer">
+            <div className="flex justify-between items-center border-b border-brand-400/10 pb-3 mb-6">
+              <h3 className="text-body-lg font-bold text-brand-900">القائمة</h3>
+              <button onClick={() => setShowMobileMenu(false)} className="text-neutral-500 hover:text-on-surface">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={() => { setShowMobileMenu(false); setShowCartDrawer(true); }}
+                className="w-full text-right px-4 py-3 bg-white/40 backdrop-blur-sm hover:bg-white/60 rounded-lg text-body-md text-brand-900 font-semibold flex items-center justify-between transition-colors shadow-sm border border-brand-400/10"
+              >
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5" />
+                  <span>طلبي</span>
+                </div>
+                {cart.length > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-brand-400 text-white text-[10px] font-bold flex items-center justify-center">
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                )}
+              </button>
+              <button 
+                onClick={() => { setShowMobileMenu(false); setShowCustomStickerModal(true); }}
+                className="w-full text-right px-4 py-3 bg-white/40 backdrop-blur-sm hover:bg-white/60 rounded-lg text-body-md text-brand-900 font-semibold flex items-center gap-2 transition-colors shadow-sm border border-brand-400/10"
+              >
+                <Sparkles className="w-5 h-5" />
+                <span>صمم استيكر مخصوص لك</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

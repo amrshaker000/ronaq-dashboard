@@ -5,12 +5,11 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  TrendingUp,
   LogOut,
-  FolderTree,
   Users,
   Store,
   Truck,
+  DollarSign,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,10 +34,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, isOpen, onClose }) 
 
   const adminLinks = [
     { to: '/dashboard', label: 'لوحة القيادة', icon: LayoutDashboard },
+    { to: '/accounts', label: 'الحسابات', icon: DollarSign },
     { to: '/products', label: 'المنتجات', icon: Package },
     { to: '/orders', label: 'الطلبات', icon: ShoppingCart },
-    { to: '/stock', label: 'المخزون والشحنات', icon: FolderTree },
-    { to: '/expenses', label: 'المصاريف والأرباح', icon: TrendingUp },
     { to: '/settings', label: 'المستخدمين', icon: Users },
     { to: '/shop', label: 'الملصقات (المتجر)', icon: Store },
     { to: '/track', label: 'تتبع الطلبات', icon: Truck },

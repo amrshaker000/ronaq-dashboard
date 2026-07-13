@@ -1,6 +1,5 @@
 import { orderRepository } from '../repositories/orderRepository.js';
 import { productRepository } from '../repositories/productRepository.js';
-import { stockRepository } from '../repositories/stockRepository.js';
 import { settingsRepository } from '../repositories/profileRepository.js';
 import { activityLogRepository, notificationRepository } from '../repositories/profileRepository.js';
 import { createAppError } from '../middleware/errorHandler.js';
@@ -48,39 +47,65 @@ export class OrderService {
     const products = await productRepository.findByIds(productIds);
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // Validate all products exist and have sufficient stock
+    // Validate all products exist
     for (const item of dto.items) {
       const product = productMap.get(item.product_id);
-      if (!product) {
+      if (!product && !item.is_custom) {
         throw createAppError(`المنتج برقم ${item.product_id} غير موجود.`, 404);
-      }
-      if (product.stock_quantity < item.quantity) {
-        throw createAppError(
-          `المخزون غير كافٍ لـ "${product.name}". المتوفر: ${product.stock_quantity}، المطلوب: ${item.quantity}`,
-          400
-        );
       }
     }
 
     // 2. Calculate totals
     let subtotal = 0;
     const orderItems = dto.items.map((item) => {
-      const product = productMap.get(item.product_id)!;
-      const totalPrice = product.price * item.quantity;
+      let unitPrice = 10; // Default price
+      let productName = 'Custom Sticker';
+      let serialNumber = 'CUSTOM';
+
+      if (item.is_custom && item.custom_size) {
+        // Calculate custom price
+        const sizeParts = item.custom_size.split('*').map(s => parseInt(s.trim()));
+        if (sizeParts.length === 2) {
+          const w = sizeParts[0] || 0;
+          const base = w * 5;
+          unitPrice = base + (item.material === 'matte' ? 10 : 5);
+        }
+      } else if (item.product_id) {
+        const product = productMap.get(item.product_id)!;
+        unitPrice = product.price;
+        productName = product.name;
+        serialNumber = product.serial_number;
+      }
+
+      const totalPrice = unitPrice * item.quantity;
       subtotal += totalPrice;
       return {
-        product_id: product.id,
-        product_name: product.name,
-        serial_number: product.serial_number,
+        product_id: item.product_id || null, // Allow null for custom stickers
+        product_name: productName,
+        serial_number: serialNumber,
         quantity: item.quantity,
-        unit_price: product.price,
+        unit_price: unitPrice,
         total_price: totalPrice,
+        material: item.material || 'glossy',
+        is_custom: item.is_custom || false,
+        custom_image_url: item.custom_image_url || null,
+        custom_size: item.custom_size || null,
       };
     });
 
     // 3. Calculate shipping
     const settings = await settingsRepository.get();
-    let shippingCost = dto.shipping_cost ?? settings.default_shipping_cost;
+    
+    let shippingCost = 60; // Default others
+    const gov = dto.customer_governorate;
+    if (gov === 'القاهرة') shippingCost = 45;
+    else if (gov === 'الجيزة') shippingCost = 40;
+    else if (gov === 'القليوبية') shippingCost = 50;
+
+    if (dto.shipping_cost !== undefined) {
+      shippingCost = dto.shipping_cost;
+    }
+
     if (subtotal >= settings.free_shipping_threshold) {
       shippingCost = 0;
     }
@@ -134,40 +159,7 @@ export class OrderService {
       }))
     );
 
-    // 7. Deduct stock + log movements
-    const movements = [];
-    for (const item of dto.items) {
-      const product = productMap.get(item.product_id)!;
-      const newQuantity = product.stock_quantity - item.quantity;
 
-      await productRepository.updateStock(item.product_id, newQuantity);
-
-      movements.push({
-        product_id: item.product_id,
-        movement_type: 'stock_out' as const,
-        quantity: item.quantity,
-        before_quantity: product.stock_quantity,
-        after_quantity: newQuantity,
-        reason: 'order_fulfilled' as const,
-        order_id: order.id,
-        performed_by: userId,
-        supplier_id: null,
-        notes: `طلب رقم ${order.order_number}`,
-      });
-
-      // Check low stock
-      if (newQuantity <= settings.low_stock_threshold) {
-        await notificationRepository.create({
-          type: 'low_stock',
-          title: 'تنبيه انخفاض المخزون',
-          message: `المنتج "${product.name}" (${product.serial_number}) وصل إلى ${newQuantity} قطعة.`,
-          reference_id: product.id,
-          reference_type: 'product',
-        });
-      }
-    }
-
-    await stockRepository.createMovements(movements);
 
     // 8. Log initial status
     // (Trigger handles this via order_status_logs)
@@ -203,12 +195,7 @@ export class OrderService {
     if (dto.payment_method) updates.payment_method = dto.payment_method;
     if (dto.payment_status) updates.payment_status = dto.payment_status;
 
-    // Handle cancellation / return — restore stock
-    const isRestorableNewStatus = dto.status === 'cancelled' || dto.status === 'returned';
-    const isRestorableOldStatus = order.status === 'cancelled' || order.status === 'returned';
-    if (isRestorableNewStatus && !isRestorableOldStatus) {
-      await this.restoreStock(order, userId);
-    }
+
 
     // We need to set created_by for the trigger to track who changed status
     const updatedOrder = await orderRepository.updateStatus(id, dto.status, {
@@ -286,33 +273,7 @@ export class OrderService {
     }
   }
 
-  private async restoreStock(order: Order, userId: string): Promise<void> {
-    const items = await orderRepository.getOrderItems(order.id);
-    const productIds = items.map((i) => i.product_id);
-    const products = await productRepository.findByIds(productIds);
-    const productMap = new Map(products.map((p) => [p.id, p]));
 
-    for (const item of items) {
-      const product = productMap.get(item.product_id);
-      if (!product) continue;
-
-      const newQuantity = product.stock_quantity + item.quantity;
-      await productRepository.updateStock(item.product_id, newQuantity);
-
-      await stockRepository.createMovement({
-        product_id: item.product_id,
-        movement_type: 'stock_in',
-        quantity: item.quantity,
-        before_quantity: product.stock_quantity,
-        after_quantity: newQuantity,
-        reason: 'order_cancelled',
-        order_id: order.id,
-        performed_by: userId,
-        supplier_id: null,
-        notes: `إلغاء طلب ${order.order_number}`,
-      });
-    }
-  }
 
   async getRecentOrders(limit: number = 10) {
     return orderRepository.getRecentOrders(limit);

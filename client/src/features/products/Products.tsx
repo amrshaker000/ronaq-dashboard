@@ -3,25 +3,20 @@ import { PageWrapper } from '@/components/layout/PageWrapper';
 import { apiRequest } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/utils';
 import {
   PRODUCT_CATEGORY_LABELS,
-  PRODUCT_SIZE_LABELS,
   PRODUCT_CATEGORIES,
-  PRODUCT_SIZES,
-  MOVEMENT_REASONS,
-  MOVEMENT_REASON_LABELS,
 } from '@/lib/constants';
-import { formatCurrency } from '@/lib/utils';
 import {
   Search,
   Plus,
+  Package,
   Edit2,
   Trash2,
-  SlidersHorizontal,
+  X,
   ChevronLeft,
   ChevronRight,
-  Package,
-  X,
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
@@ -35,8 +30,6 @@ export const Products: React.FC = () => {
   // Filters State
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [size, setSize] = useState('');
-  const [stockStatus, setStockStatus] = useState('');
   
   // Pagination State
   const [page, setPage] = useState(1);
@@ -52,20 +45,14 @@ export const Products: React.FC = () => {
   // Image Preview State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
-  const [showStockModal, setShowStockModal] = useState(false);
-  const [stockQty, setStockQty] = useState(0);
-  const [stockReason, setStockReason] = useState<string>('correction');
-  const [stockNotes, setStockNotes] = useState('');
-
   // Form Fields State
   const [name, setName] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [prodCategory, setProdCategory] = useState('Random');
   const [prodSize, setProdSize] = useState('medium');
-  const [price, setPrice] = useState<number>(5);
-  const [costPrice, setCostPrice] = useState<number>(1.5);
-  const [stockQuantity, setStockQuantity] = useState<number>(5);
-  const [minStockLevel, setMinStockLevel] = useState<number>(2);
+  const [price, setPrice] = useState<number>(10);
+  const [basePrice, setBasePrice] = useState<number>(30);
+  const [discount, setDiscount] = useState<number>(33);
   const [description, setDescription] = useState('');
   const [imagePath, setImagePath] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -95,8 +82,6 @@ export const Products: React.FC = () => {
       });
       if (search) params.append('search', search);
       if (category) params.append('category', category);
-      if (size) params.append('size', size);
-      if (stockStatus) params.append('stockStatus', stockStatus);
 
       const response = await apiRequest<Product[]>(`/products?${params.toString()}`);
       if (response.success) {
@@ -124,7 +109,7 @@ export const Products: React.FC = () => {
 
   useEffect(() => {
     loadProducts();
-  }, [page, category, size, stockStatus]);
+  }, [page, category]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,10 +124,9 @@ export const Products: React.FC = () => {
     setSerialNumber('');
     setProdCategory('Random');
     setProdSize('medium');
-    setPrice(5);
-    setCostPrice(1.5);
-    setStockQuantity(5);
-    setMinStockLevel(2);
+    setBasePrice(30);
+    setDiscount(66.67);
+    setPrice(10);
     setDescription('');
     setImagePath('');
     setImageFile(null);
@@ -156,11 +140,12 @@ export const Products: React.FC = () => {
     setName(product.name);
     setSerialNumber(product.serial_number);
     setProdCategory(product.category);
-    setProdSize(product.size);
-    setPrice(product.price);
-    setCostPrice(product.cost_price);
-    setStockQuantity(product.stock_quantity);
-    setMinStockLevel(product.min_stock_level);
+    const bp = Number(product.base_price) || 30;
+    const disc = Number(product.discount) || 66.67;
+    const sp = Number(product.price) || Number((bp * (1 - disc / 100)).toFixed(2));
+    setBasePrice(bp);
+    setDiscount(disc);
+    setPrice(sp);
     setDescription(product.description || '');
     setImagePath(product.image_path || '');
     setImageFile(null);
@@ -168,13 +153,7 @@ export const Products: React.FC = () => {
     setShowProductModal(true);
   };
 
-  const handleOpenStockModal = (product: Product) => {
-    setSelectedProduct(product);
-    setStockQty(0);
-    setStockReason('correction');
-    setStockNotes('');
-    setShowStockModal(true);
-  };
+
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,12 +201,10 @@ export const Products: React.FC = () => {
       const payload = {
         name,
         serial_number: serialNumber,
-        category: prodCategory,
         size: prodSize,
         price: Number(price),
-        cost_price: Number(costPrice),
-        stock_quantity: Number(stockQuantity),
-        min_stock_level: Number(minStockLevel),
+        base_price: Number(basePrice),
+        discount: Number(discount),
         description: description || undefined,
         image_path: uploadedUrl || undefined,
       };
@@ -252,39 +229,6 @@ export const Products: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(error.message || 'فشل حفظ بيانات المنتج.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSaveStockAdjustment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (stockQty === 0) {
-      toast.error('يرجى تحديد كمية تعديل غير صفرية.');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const payload = {
-        product_id: selectedProduct?.id,
-        quantity: Number(stockQty),
-        reason: stockReason,
-        notes: stockNotes || undefined,
-      };
-
-      const response = await apiRequest('/products/adjust-stock', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      if (response.success) {
-        toast.success('تم تسوية وتحديث المخزون بنجاح.');
-        setShowStockModal(false);
-        loadProducts();
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'فشل تعديل المخزون.');
     } finally {
       setSubmitting(false);
     }
@@ -369,42 +313,6 @@ export const Products: React.FC = () => {
             تطبيق البحث
           </button>
         </form>
-
-        <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
-          <span className="text-label-sm font-semibold text-on-surface-variant flex items-center gap-1">
-            <SlidersHorizontal className="w-4 h-4" />
-            تصفية سريعة:
-          </span>
-          <select
-            value={size}
-            onChange={(e) => {
-              setSize(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-1 border border-neutral-200 rounded-full text-label-sm font-semibold bg-white"
-          >
-            <option value="">كل المقاسات</option>
-            {PRODUCT_SIZES.map((sz) => (
-              <option key={sz} value={sz}>
-                {PRODUCT_SIZE_LABELS[sz]}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={stockStatus}
-            onChange={(e) => {
-              setStockStatus(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-1 border border-neutral-200 rounded-full text-label-sm font-semibold bg-white"
-          >
-            <option value="">كل حالات المخزون</option>
-            <option value="in_stock">متوفر بالمخزن</option>
-            <option value="low_stock">مخزون منخفض</option>
-            <option value="out_of_stock">نفذ المخزون</option>
-          </select>
-        </div>
       </div>
 
       {/* Products Grid / Table */}
@@ -417,9 +325,6 @@ export const Products: React.FC = () => {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {products.map((prod) => {
-                const isOutOfStock = prod.stock_quantity === 0;
-                const isLowStock = prod.stock_quantity > 0 && prod.stock_quantity <= prod.min_stock_level;
-
                 return (
                   <div
                     key={prod.id}
@@ -445,19 +350,6 @@ export const Products: React.FC = () => {
                         <Package className="w-10 h-10 text-neutral-400" />
                       )}
 
-                      {/* Stock Status Badge */}
-                      <span
-                        className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isOutOfStock
-                            ? 'bg-danger-light text-danger-dark'
-                            : isLowStock
-                            ? 'bg-warning-light text-warning-dark'
-                            : 'bg-success-light text-success-dark'
-                        }`}
-                      >
-                        {isOutOfStock ? 'نفذ المخزن' : isLowStock ? 'مخزون منخفض' : 'متوفر'}
-                      </span>
-
                       {/* Category Badge */}
                       <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[9px] font-semibold px-2 py-0.5 rounded">
                         {PRODUCT_CATEGORY_LABELS[prod.category]}
@@ -477,29 +369,35 @@ export const Products: React.FC = () => {
 
                       <div className="space-y-1.5 pt-2 border-t border-neutral-100">
                         <div className="flex justify-between text-label-sm">
-                          <span className="text-on-surface-variant">المقاس:</span>
-                          <span className="font-semibold text-on-surface">
-                            {PRODUCT_SIZE_LABELS[prod.size]}
+                          <span className="text-on-surface-variant">السعر الأساسي:</span>
+                          <span className="font-semibold text-neutral-400 line-through">
+                            {formatCurrency(Number(prod.base_price) || 30)}
                           </span>
                         </div>
-                        <div className="flex justify-between text-label-sm">
-                          <span className="text-on-surface-variant">سعر البيع:</span>
-                          <span className="font-bold text-brand-400">
-                            {formatCurrency(prod.price)}
-                          </span>
-                        </div>
-                        {isAdmin && (
+                        {(Number(prod.discount) || 66.67) > 0 && (
                           <div className="flex justify-between text-label-sm">
-                            <span className="text-on-surface-variant">سعر التكلفة:</span>
-                            <span className="font-semibold text-neutral-600">
-                              {formatCurrency(prod.cost_price)}
+                            <span className="text-on-surface-variant">الخصم:</span>
+                            <span className="text-[11px] font-bold bg-danger/10 text-danger px-1.5 py-0.5 rounded">
+                              {Number(prod.discount) || 66.67}%
                             </span>
                           </div>
                         )}
+                        <div className="flex justify-between text-label-sm pt-1 border-t border-neutral-50 border-dashed">
+                          <span className="text-on-surface-variant font-semibold">سعر البيع:</span>
+                          <span className="font-bold text-brand-500 text-body-md">
+                            {formatCurrency(Number(prod.price))}
+                          </span>
+                        </div>
                         <div className="flex justify-between text-label-sm">
-                          <span className="text-on-surface-variant">المخزون:</span>
-                          <span className={`font-bold ${isOutOfStock ? 'text-danger' : 'text-on-surface'}`}>
-                            {prod.stock_quantity} قطعة
+                          <span className="text-on-surface-variant">الخامات المتاحة:</span>
+                          <span className="font-semibold text-on-surface">
+                            لامع / مط
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-label-sm">
+                          <span className="text-on-surface-variant">نظام التوفير:</span>
+                          <span className="font-semibold text-brand-500">
+                            طباعة بالطلب
                           </span>
                         </div>
                       </div>
@@ -508,19 +406,12 @@ export const Products: React.FC = () => {
                       {isAdmin && (
                         <div className="flex items-center gap-2 pt-3 border-t border-neutral-100 flex-shrink-0">
                           <button
-                            onClick={() => handleOpenStockModal(prod)}
-                            className="flex-1 flex items-center justify-center gap-1 py-1.5 border border-brand-200 text-brand-400 hover:bg-brand-50 rounded-lg text-label-sm font-semibold transition-colors"
-                            title="تسوية وتعديل مخزون"
-                          >
-                            <Package className="w-4 h-4" />
-                            المخزن
-                          </button>
-                          <button
                             onClick={() => handleOpenEditModal(prod)}
-                            className="p-1.5 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition-colors"
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-neutral-50 hover:bg-neutral-100 text-neutral-600 rounded-lg text-label-sm font-semibold transition-colors border border-neutral-200"
                             title="تعديل بيانات"
                           >
                             <Edit2 className="w-4 h-4" />
+                            تعديل بيانات
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(prod.id, prod.name)}
@@ -619,18 +510,40 @@ export const Products: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-label-sm font-semibold text-on-surface">المقاس *</label>
-                  <select
-                    value={prodSize}
-                    onChange={(e) => setProdSize(e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none bg-white"
-                  >
-                    {PRODUCT_SIZES.map((sz) => (
-                      <option key={sz} value={sz}>
-                        {PRODUCT_SIZE_LABELS[sz]}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="text-label-sm font-semibold text-on-surface">السعر الأساسي (ج.م) *</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    required
+                    value={basePrice}
+                    onChange={(e) => {
+                      const bp = Number(e.target.value);
+                      setBasePrice(bp);
+                      const sp = Number((bp * (1 - discount / 100)).toFixed(2));
+                      setPrice(sp);
+                    }}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-label-sm font-semibold text-on-surface">الخصم (%) *</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    max={100}
+                    required
+                    value={discount}
+                    onChange={(e) => {
+                      const disc = Math.min(100, Math.max(0, Number(e.target.value)));
+                      setDiscount(disc);
+                      const sp = Number((basePrice * (1 - disc / 100)).toFixed(2));
+                      setPrice(sp);
+                    }}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -638,52 +551,25 @@ export const Products: React.FC = () => {
                   <input
                     type="number"
                     min={0}
-                    step="0.5"
+                    step="0.01"
                     required
                     value={price}
-                    onChange={(e) => setPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
+                    onChange={(e) => {
+                      const sp = Number(e.target.value);
+                      setPrice(sp);
+                      if (basePrice > 0) {
+                        if (sp >= basePrice) {
+                          setDiscount(0);
+                        } else {
+                          const disc = Number((((basePrice - sp) / basePrice) * 100).toFixed(2));
+                          setDiscount(disc);
+                        }
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-brand-400 rounded-lg text-body-md focus:border-brand-500 focus:outline-none bg-brand-50 font-bold text-brand-900"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-label-sm font-semibold text-on-surface">سعر التكلفة (ج.م) *</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.5"
-                    required
-                    value={costPrice}
-                    onChange={(e) => setCostPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
-                  />
-                </div>
-
-                {modalMode === 'create' && (
-                  <div className="space-y-1">
-                    <label className="text-label-sm font-semibold text-on-surface">المخزون الأولي *</label>
-                    <input
-                      type="number"
-                      min={0}
-                      required
-                      value={stockQuantity}
-                      onChange={(e) => setStockQuantity(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <label className="text-label-sm font-semibold text-on-surface">الحد الأدنى للتنبيه *</label>
-                  <input
-                    type="number"
-                    min={0}
-                    required
-                    value={minStockLevel}
-                    onChange={(e) => setMinStockLevel(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
-                  />
-                </div>
               </div>
 
               <div className="space-y-1">
@@ -753,75 +639,7 @@ export const Products: React.FC = () => {
         </div>
       )}
 
-      {/* Stock Adjustment Modal */}
-      {showStockModal && (
-        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-xl shadow-modal border border-neutral-200 w-full max-w-md animate-fade-up">
-            <h3 className="text-body-lg font-bold text-on-surface border-b border-neutral-100 pb-2 mb-4">
-              تسوية وتعديل المخزون: {selectedProduct?.name}
-            </h3>
 
-            <form onSubmit={handleSaveStockAdjustment} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-label-sm font-semibold text-on-surface">كمية التعديل *</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="مثال: 10 للزيادة، -5 للنقصان"
-                  value={stockQty}
-                  onChange={(e) => setStockQty(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-label-sm font-semibold text-on-surface">سبب التعديل *</label>
-                <select
-                  value={stockReason}
-                  onChange={(e) => setStockReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none bg-white"
-                >
-                  {MOVEMENT_REASONS.filter((r) => r !== 'new_shipment' && r !== 'order_fulfilled').map(
-                    (reason) => (
-                      <option key={reason} value={reason}>
-                        {MOVEMENT_REASON_LABELS[reason]}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-label-sm font-semibold text-on-surface">ملاحظات التعديل</label>
-                <textarea
-                  rows={2}
-                  placeholder="ملاحظات توضيحية لسبب هذا التعديل..."
-                  value={stockNotes}
-                  onChange={(e) => setStockNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-neutral-100">
-                <button
-                  type="button"
-                  onClick={() => setShowStockModal(false)}
-                  className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-on-surface font-semibold text-body-md"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-4 py-2 rounded-lg bg-brand-400 hover:bg-brand-500 text-white font-semibold text-body-md"
-                >
-                  حفظ وتحديث
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       {/* Image Preview Modal */}
       {selectedImage && (
         <div 

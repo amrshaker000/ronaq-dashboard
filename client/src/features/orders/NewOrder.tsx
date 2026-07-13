@@ -10,13 +10,16 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import type { Product } from '@/types';
 
 interface OrderItemInput {
-  productId: number;
+  productId: number | null;
   quantity: number;
   price: number;
   name: string;
   serialNumber: string;
-  maxStock: number;
   imagePath: string | null;
+  isCustom: boolean;
+  material: 'glossy' | 'matte';
+  customSize?: string;
+  customImageUrl?: string;
 }
 
 export const NewOrder: React.FC = () => {
@@ -37,7 +40,7 @@ export const NewOrder: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [refreshingProducts, setRefreshingProducts] = useState(false);
-
+  
   const refreshProducts = async (showToast = false) => {
     try {
       setRefreshingProducts(true);
@@ -46,7 +49,7 @@ export const NewOrder: React.FC = () => {
         const activeProds = prodRes.data.filter((p) => p.is_active);
         setProducts(activeProds);
         
-        // Update items already in the list to match new prices/stock limits
+        // Update items already in the list to match new prices
         setItems((prevItems) => {
           return prevItems.map((item) => {
             const currentProd = activeProds.find((p) => p.id === item.productId);
@@ -54,11 +57,10 @@ export const NewOrder: React.FC = () => {
               return {
                 ...item,
                 price: currentProd.price,
-                maxStock: currentProd.stock_quantity,
                 name: currentProd.name,
                 serialNumber: currentProd.serial_number,
                 imagePath: currentProd.image_path,
-                quantity: Math.min(item.quantity, currentProd.stock_quantity) || 1
+                quantity: item.quantity
               };
             }
             return item;
@@ -66,7 +68,7 @@ export const NewOrder: React.FC = () => {
         });
 
         if (showToast) {
-          toast.success('تم تحديث قائمة المنتجات والمخزون بنجاح.');
+          toast.success('تم تحديث قائمة المنتجات بنجاح.');
         }
       }
     } catch (error) {
@@ -83,7 +85,7 @@ export const NewOrder: React.FC = () => {
         setLoadingConfig(true);
         const prodRes = await apiRequest<Product[]>('/products?pageSize=10000');
         if (prodRes.success) {
-          // Only show active products with stock
+          // Only show active products
           setProducts(prodRes.data.filter((p) => p.is_active));
         }
       } catch (error) {
@@ -96,6 +98,15 @@ export const NewOrder: React.FC = () => {
     loadConfig();
   }, []);
 
+  const handleGovChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const gov = e.target.value;
+    setCustomerGov(gov);
+    if (gov === 'القاهرة') setShippingCost(45);
+    else if (gov === 'الجيزة') setShippingCost(40);
+    else if (gov === 'القليوبية') setShippingCost(50);
+    else setShippingCost(60);
+  };
+
   const [showSelectorModal, setShowSelectorModal] = useState(false);
   const [selectorSearch, setSelectorSearch] = useState('');
   const [selectorCategory, setSelectorCategory] = useState('');
@@ -104,7 +115,24 @@ export const NewOrder: React.FC = () => {
     setSelectorSearch('');
     setSelectorCategory('');
     setShowSelectorModal(true);
-    refreshProducts();
+    // refreshProducts(); // Removing auto-refresh to make it faster
+  };
+
+  const handleAddCustomSticker = () => {
+    setItems((prev) => [
+      ...prev,
+      {
+        productId: null,
+        quantity: 1,
+        price: 20, // Default 3x3 glossy
+        name: 'استيكر مخصوص',
+        serialNumber: `CUST-${Date.now().toString().slice(-4)}`,
+        imagePath: null,
+        isCustom: true,
+        material: 'glossy',
+        customSize: '3*3',
+      },
+    ]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -117,10 +145,6 @@ export const NewOrder: React.FC = () => {
       setItems((prev) => prev.filter((item) => item.productId !== product.id));
       toast.info(`تمت إزالة ${product.name} من الطلب.`);
     } else {
-      if (product.stock_quantity <= 0) {
-        toast.error('هذا المنتج غير متوفر في المخزن حالياً.');
-        return;
-      }
       setItems((prev) => [
         ...prev,
         {
@@ -129,22 +153,39 @@ export const NewOrder: React.FC = () => {
           price: product.price,
           name: product.name,
           serialNumber: product.serial_number,
-          maxStock: product.stock_quantity,
           imagePath: product.image_path,
+          isCustom: false,
+          material: 'glossy',
         },
       ]);
       toast.success(`تمت إضافة ${product.name} إلى الطلب.`);
     }
   };
 
+  const handleItemPropertyChange = (index: number, field: keyof OrderItemInput, value: any) => {
+    setItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== index) return it;
+        
+        const updated = { ...it, [field]: value };
+        
+        // Recalculate price if size or material changes for custom stickers
+        if (updated.isCustom && (field === 'customSize' || field === 'material')) {
+          const sizeStr = updated.customSize || '3*3';
+          const size = parseInt(sizeStr.split('*')[0] || '', 10) || 3;
+          const basePrice = updated.material === 'glossy' ? 20 : 25;
+          const sizeAddition = Math.max(0, size - 3) * 5;
+          updated.price = basePrice + sizeAddition;
+        }
+        
+        return updated;
+      })
+    );
+  };
+
   const handleQuantityChange = (index: number, quantity: number) => {
     const item = items[index];
     if (!item) return;
-
-    if (quantity > item.maxStock) {
-      toast.warning(`المخزون المتوفر غير كافٍ. الحد الأقصى المتاح: ${item.maxStock}`);
-      quantity = item.maxStock;
-    }
 
     setItems((prev) =>
       prev.map((it, i) => (i === index ? { ...it, quantity: Math.max(1, quantity) } : it))
@@ -159,12 +200,6 @@ export const NewOrder: React.FC = () => {
     e.preventDefault();
     if (items.length === 0) {
       toast.error('يرجى إضافة منتج واحد على الأقل للطلب.');
-      return;
-    }
-
-    const invalidItem = items.find((item) => item.productId === 0);
-    if (invalidItem) {
-      toast.error('يرجى تحديد منتج صحيح لجميع السطور المضافة.');
       return;
     }
 
@@ -197,7 +232,15 @@ export const NewOrder: React.FC = () => {
         discount: Number(discount),
         shipping_cost: Number(shippingCost),
         notes: notes,
-        items: items.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
+        items: items.map((it) => ({ 
+          product_id: it.productId, 
+          quantity: it.quantity,
+          is_custom: it.isCustom,
+          material: it.material,
+          custom_size: it.customSize,
+          custom_image_url: it.customImageUrl,
+          price: it.price
+        })),
       };
 
       const response = await apiRequest('/orders', {
@@ -225,7 +268,7 @@ export const NewOrder: React.FC = () => {
     <PageWrapper>
       <div className="page-header">
         <h2 className="page-title">طلب جديد</h2>
-        <p className="page-subtitle">تسجيل طلبية جديدة لعميل وخصم الملصقات من المخزون</p>
+        <p className="page-subtitle">تسجيل طلبية جديدة لعميل لطباعة الملصقات</p>
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -268,7 +311,7 @@ export const NewOrder: React.FC = () => {
                 <label className="text-label-sm font-semibold text-on-surface">المحافظة *</label>
                 <select
                   value={customerGov}
-                  onChange={(e) => setCustomerGov(e.target.value)}
+                  onChange={handleGovChange}
                   disabled={loading}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none bg-white"
                 >
@@ -299,15 +342,26 @@ export const NewOrder: React.FC = () => {
           <div className="card p-6 bg-white space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
               <h3 className="text-body-lg font-bold text-on-surface">المنتجات المطلوبة</h3>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                disabled={loading}
-                className="flex items-center gap-1 text-label-sm text-brand-400 hover:text-brand-500 font-semibold"
-              >
-                <Plus className="w-4 h-4" />
-                إضافة ملصق
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleAddCustomSticker}
+                  disabled={loading}
+                  className="flex items-center gap-1 text-label-sm text-brand-500 hover:text-brand-600 font-semibold"
+                >
+                  <Plus className="w-4 h-4" />
+                  استيكر مخصوص
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  disabled={loading}
+                  className="flex items-center gap-1 text-label-sm text-brand-400 hover:text-brand-500 font-semibold"
+                >
+                  <Plus className="w-4 h-4" />
+                  إضافة ملصق
+                </button>
+              </div>
             </div>
 
             {items.length === 0 ? (
@@ -339,8 +393,11 @@ export const NewOrder: React.FC = () => {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <div className="font-semibold text-body-md text-on-surface truncate">
+                        <div className="font-semibold text-body-md text-on-surface truncate flex items-center gap-2">
                           {item.name}
+                          {item.isCustom && (
+                            <span className="text-[10px] bg-brand-100 text-brand-600 px-1.5 py-0.5 rounded">مخصوص</span>
+                          )}
                         </div>
                         <div className="font-mono text-label-sm text-brand-400">
                           {item.serialNumber}
@@ -348,21 +405,56 @@ export const NewOrder: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Properties (Material & Size for Custom) */}
+                    <div className="flex items-center gap-2">
+                      {item.isCustom ? (
+                        <>
+                          <select
+                            value={item.customSize || '3*3'}
+                            onChange={(e) => handleItemPropertyChange(index, 'customSize', e.target.value)}
+                            className="px-2 py-1.5 border border-neutral-300 rounded text-label-sm focus:border-brand-400 focus:outline-none bg-white"
+                          >
+                            <option value="3*3">3*3</option>
+                            <option value="4*4">4*4</option>
+                            <option value="5*5">5*5</option>
+                            <option value="6*6">6*6</option>
+                            <option value="7*7">7*7</option>
+                            <option value="8*8">8*8</option>
+                          </select>
+                          <input 
+                            type="text" 
+                            placeholder="رابط الصورة (اختياري)" 
+                            value={item.customImageUrl || ''}
+                            onChange={e => handleItemPropertyChange(index, 'customImageUrl', e.target.value)}
+                            className="w-32 px-2 py-1.5 border border-neutral-300 rounded text-label-sm focus:border-brand-400 focus:outline-none"
+                          />
+                        </>
+                      ) : null}
+                      
+                      <select
+                        value={item.material}
+                        onChange={(e) => handleItemPropertyChange(index, 'material', e.target.value)}
+                        className="px-2 py-1.5 border border-neutral-300 rounded text-label-sm focus:border-brand-400 focus:outline-none bg-white"
+                      >
+                        <option value="glossy">لامع</option>
+                        <option value="matte">مط</option>
+                      </select>
+                    </div>
+
                     {/* Quantity & Pricing details */}
                     <div className="flex items-center gap-3 justify-between md:justify-end">
-                      <div className="w-24">
+                      <div className="w-20">
                         <input
                           type="number"
                           min={1}
-                          max={item.maxStock || undefined}
                           value={item.quantity}
                           onChange={(e) => handleQuantityChange(index, Number(e.target.value))}
-                          disabled={loading || !item.productId}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md text-center focus:border-brand-400 focus:outline-none"
+                          disabled={loading || (item.productId === null && !item.isCustom)}
+                          className="w-full px-2 py-1.5 border border-neutral-300 rounded-lg text-body-md text-center focus:border-brand-400 focus:outline-none"
                         />
                       </div>
                       
-                      <div className="w-28 text-left font-semibold text-on-surface text-body-md">
+                      <div className="w-24 text-left font-semibold text-on-surface text-body-md">
                         {formatCurrency(item.price * item.quantity)}
                       </div>
 
@@ -569,17 +661,14 @@ export const NewOrder: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {filteredProducts.map((prod) => {
                       const isAdded = items.some((item) => item.productId === prod.id);
-                      const isOutOfStock = prod.stock_quantity <= 0;
 
                       return (
                         <div
                           key={prod.id}
-                          onClick={() => !isOutOfStock && handleToggleProduct(prod)}
+                          onClick={() => handleToggleProduct(prod)}
                           className={`flex flex-col p-3 rounded-lg border transition-all cursor-pointer select-none bg-surface-container-lowest ${
                             isAdded
                               ? 'border-brand-400 ring-1 ring-brand-400 bg-brand-50/20'
-                              : isOutOfStock
-                              ? 'opacity-50 border-neutral-200 cursor-not-allowed'
                               : 'border-neutral-200 hover:border-brand-300 hover:shadow-sm'
                           }`}
                         >
@@ -614,21 +703,20 @@ export const NewOrder: React.FC = () => {
                                 {prod.serial_number}
                               </p>
                             </div>
-                            <div className="flex items-center justify-between mt-3 pt-2 border-t border-neutral-100">
-                              <span className="font-bold text-body-md text-on-surface">
-                                {formatCurrency(prod.price)}
+                            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-neutral-100">
+                              <span className="font-bold text-body-md text-brand-500">
+                                {formatCurrency(Number(prod.price))}
                               </span>
-                              <span
-                                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                                  isOutOfStock
-                                    ? 'bg-danger-light text-danger-dark'
-                                    : prod.stock_quantity <= prod.min_stock_level
-                                    ? 'bg-warning-light text-warning-dark'
-                                    : 'bg-success-light text-success-dark'
-                                }`}
-                              >
-                                {isOutOfStock ? 'نفذ' : `متوفر: ${prod.stock_quantity}`}
-                              </span>
+                              {(Number(prod.discount) || 66.67) > 0 && (
+                                <>
+                                  <span className="text-label-sm text-neutral-400 line-through">
+                                    {formatCurrency(Number(prod.base_price) || 30)}
+                                  </span>
+                                  <span className="text-[10px] font-bold bg-danger/10 text-danger px-1.5 py-0.5 rounded">
+                                    {Number(prod.discount) || 66.67}% خصم
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
