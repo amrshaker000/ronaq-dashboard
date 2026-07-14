@@ -287,7 +287,7 @@ export interface CreateOrderDTO {
 }
 
 export interface CreateOrderItemDTO {
-  product_id: number;
+  product_id?: number | null;
   quantity: number;
   material?: string;
   is_custom?: boolean;

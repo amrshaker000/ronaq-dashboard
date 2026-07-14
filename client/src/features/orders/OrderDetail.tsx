@@ -84,7 +84,7 @@ export const OrderDetail: React.FC = () => {
   }, [id]);
 
   const handleReturnOrder = async () => {
-    if (!window.confirm('هل أنت متأكد من إرجاع هذا الطلب وإرجاع المنتجات إلى المخزن؟')) return;
+    if (!window.confirm('هل أنت متأكد من تسجيل هذا الطلب كمرتجع؟')) return;
 
     try {
       setSubmitting(true);
@@ -96,7 +96,7 @@ export const OrderDetail: React.FC = () => {
         }),
       });
       if (response.success) {
-        toast.success('تم إرجاع الطلب بنجاح وتحديث المخزون.');
+        toast.success('تم تسجيل مرتجع الطلب بنجاح وتحديث الحسابات.');
         loadData();
       }
     } catch (error: any) {
@@ -107,7 +107,7 @@ export const OrderDetail: React.FC = () => {
   };
 
   const handleCancelOrder = async () => {
-    if (!window.confirm('هل أنت متأكد من إلغاء هذا الطلب وإرجاع المنتجات إلى المخزن؟')) return;
+    if (!window.confirm('هل أنت متأكد من إلغاء هذا الطلب؟')) return;
 
     try {
       setSubmitting(true);
@@ -115,7 +115,7 @@ export const OrderDetail: React.FC = () => {
         method: 'POST',
       });
       if (response.success) {
-        toast.success('تم إلغاء الطلب بنجاح وتحديث المخزون.');
+        toast.success('تم إلغاء الطلب بنجاح وتحديث الحسابات.');
         loadData();
       }
     } catch (error: any) {
@@ -267,7 +267,7 @@ export const OrderDetail: React.FC = () => {
               <thead>
                 <tr>
                   <th>الرقم التسلسلي</th>
-                  <th>اسم الملصق</th>
+                  <th>الملصق والتفاصيل</th>
                   <th>الكمية</th>
                   <th>سعر الوحدة</th>
                   <th>الإجمالي</th>
@@ -277,10 +277,48 @@ export const OrderDetail: React.FC = () => {
                 {items.map((item) => (
                   <tr key={item.id}>
                     <td className="font-mono text-neutral-600">{item.serial_number}</td>
-                    <td className="font-medium">{item.product_name}</td>
+                    <td className="font-medium">
+                      <div className="flex items-center gap-3">
+                        {item.is_custom && item.custom_image_url ? (
+                          <a 
+                            href={item.custom_image_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-12 h-12 rounded border border-neutral-200 overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity block bg-neutral-50 shadow-sm"
+                            title="عرض التصميم بالحجم الكامل"
+                          >
+                            <img src={item.custom_image_url} alt="تصميم مخصوص" className="w-full h-full object-cover" />
+                          </a>
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-neutral-50 border border-neutral-200 overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <span className="text-[10px] text-neutral-400 font-bold">جاهز</span>
+                          </div>
+                        )}
+                        <div>
+                          <span className="block font-bold text-body-md text-on-surface">{item.product_name}</span>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            {item.is_custom && (
+                              <span className="text-[10px] font-bold bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded">
+                                تصميم مخصوص
+                              </span>
+                            )}
+                            {item.material && (
+                              <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-700 px-1.5 py-0.5 rounded">
+                                {item.material === 'glossy' ? 'خامة: لامع' : item.material === 'matte' ? 'خامة: مط' : `خامة: ${item.material}`}
+                              </span>
+                            )}
+                            {item.is_custom && item.custom_size && (
+                              <span className="text-[10px] font-mono bg-neutral-100 text-neutral-700 px-1.5 py-0.5 rounded">
+                                مقاس: {item.custom_size} سم
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
                     <td>{item.quantity}</td>
-                    <td>{formatCurrency(item.unit_price)}</td>
-                    <td className="font-semibold">{formatCurrency(item.total_price)}</td>
+                    <td className="font-mono">{formatCurrency(item.unit_price)}</td>
+                    <td className="font-semibold font-mono">{formatCurrency(item.total_price)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -441,7 +479,7 @@ export const OrderDetail: React.FC = () => {
                     className="w-full py-2.5 bg-danger-light hover:bg-danger/25 text-danger font-semibold rounded-lg text-body-md flex items-center justify-center gap-2 transition-colors border border-danger/30"
                   >
                     <XCircle className="w-5 h-5" />
-                    إرجاع الطلب وإرجاع المخزون (مرتجع)
+                    تسجيل الطلب كمرتجع (تحديث المبيعات)
                   </button>
                 ) : (
                   <button
@@ -450,7 +488,7 @@ export const OrderDetail: React.FC = () => {
                     className="w-full py-2.5 bg-danger-light hover:bg-danger/25 text-danger font-semibold rounded-lg text-body-md flex items-center justify-center gap-2 transition-colors border border-danger/30"
                   >
                     <XCircle className="w-5 h-5" />
-                    إلغاء الطلب وإرجاع المخزون
+                    إلغاء الطلب بالكامل
                   </button>
                 )
               )}

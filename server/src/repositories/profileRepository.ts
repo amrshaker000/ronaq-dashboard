@@ -33,6 +33,22 @@ export class ProfileRepository {
   }
 
   async update(id: string, updates: Partial<Profile>): Promise<Profile> {
+    if (updates.email || updates.role || updates.name) {
+      const authUpdates: any = {};
+      if (updates.email) authUpdates.email = updates.email;
+      
+      const meta: any = {};
+      if (updates.role) meta.role = updates.role;
+      if (updates.name) meta.name = updates.name;
+      
+      if (Object.keys(meta).length > 0) {
+        authUpdates.user_metadata = meta;
+      }
+      
+      const { error: authError } = await this.db.auth.admin.updateUserById(id, authUpdates);
+      if (authError) throw authError;
+    }
+
     const { data, error } = await this.db
       .from('profiles')
       .update(updates)
@@ -117,11 +133,28 @@ export class SettingsRepository {
     const { data, error } = await this.db
       .from('business_settings')
       .select('*')
-      .limit(1)
-      .single();
+      .limit(1);
 
-    if (error) throw error;
-    return data as BusinessSettings;
+    if (error && error.code !== 'PGRST116') throw error;
+    
+    if (data && data.length > 0) {
+      return data[0] as BusinessSettings;
+    }
+
+    return {
+      id: 1,
+      brand_name: 'رونق',
+      whatsapp_number: '',
+      default_shipping_company: '',
+      free_shipping_threshold: 200.00,
+      order_number_prefix: 'RNQ',
+      default_shipping_cost: 50.00,
+      currency: 'EGP',
+      currency_symbol: 'ج.م',
+      low_stock_threshold: 2,
+      updated_at: new Date().toISOString(),
+      updated_by: null
+    };
   }
 
   async update(

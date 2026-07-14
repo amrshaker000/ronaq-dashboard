@@ -31,15 +31,8 @@ router.get('/products', async (_req: Request, res: Response, next: NextFunction)
 // 2. Public route to create a new order (without authentication)
 router.post('/orders', validate(createOrderSchema, 'body'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Set all pricing and financial calculations to 0 for priceless ordering
-    const orderPayload = {
-      ...req.body,
-      discount: 0,
-      shipping_cost: 0,
-    };
-    
     // Pass null as the userId to signify it's a public order
-    const order = await orderService.create(orderPayload, null as any);
+    const order = await orderService.create(req.body, null as any);
     
     res.status(201).json({
       success: true,

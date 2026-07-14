@@ -43,15 +43,21 @@ export class OrderService {
 
   async create(dto: CreateOrderDTO, userId: string | null): Promise<Order> {
     // 1. Fetch all products and validate stock
-    const productIds = dto.items.map((i) => i.product_id);
-    const products = await productRepository.findByIds(productIds);
+    const productIds = dto.items
+      .map((i) => i.product_id)
+      .filter((id): id is number => id !== null && id !== undefined);
+    const products = productIds.length > 0 ? await productRepository.findByIds(productIds) : [];
     const productMap = new Map(products.map((p) => [p.id, p]));
 
     // Validate all products exist
     for (const item of dto.items) {
-      const product = productMap.get(item.product_id);
-      if (!product && !item.is_custom) {
-        throw createAppError(`المنتج برقم ${item.product_id} غير موجود.`, 404);
+      if (item.product_id) {
+        const product = productMap.get(item.product_id);
+        if (!product && !item.is_custom) {
+          throw createAppError(`المنتج برقم ${item.product_id} غير موجود.`, 404);
+        }
+      } else if (!item.is_custom) {
+        throw createAppError(`معرف المنتج مطلوب للملصقات العادية.`, 400);
       }
     }
 
@@ -71,7 +77,10 @@ export class OrderService {
           unitPrice = base + (item.material === 'matte' ? 10 : 5);
         }
       } else if (item.product_id) {
-        const product = productMap.get(item.product_id)!;
+        const product = productMap.get(item.product_id);
+        if (!product) {
+          throw createAppError(`المنتج برقم ${item.product_id} غير موجود.`, 404);
+        }
         unitPrice = product.price;
         productName = product.name;
         serialNumber = product.serial_number;
@@ -104,9 +113,7 @@ export class OrderService {
 
     if (dto.shipping_cost !== undefined) {
       shippingCost = dto.shipping_cost;
-    }
-
-    if (subtotal >= settings.free_shipping_threshold) {
+    } else if (subtotal >= settings.free_shipping_threshold) {
       shippingCost = 0;
     }
 

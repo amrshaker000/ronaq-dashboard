@@ -6,7 +6,9 @@ import { validate } from '../middleware/validate.js';
 import {
   updateSettingsSchema,
   createUserSchema,
+  updateProfileSchema,
 } from '../validators/schemas.js';
+
 
 const router = Router();
 
@@ -32,7 +34,7 @@ router.get('/activity-logs', adminOnly, profileController.getActivityLogs);
 router.get('/users', adminOnly, profileController.getAllProfiles);
 router.get('/users/:id', adminOnly, profileController.getProfileById);
 router.post('/users', adminOnly, validate(createUserSchema, 'body'), profileController.createUser);
-router.put('/users/:id', adminOnly, profileController.updateProfile);
+router.put('/users/:id', adminOnly, validate(updateProfileSchema, 'body'), profileController.updateProfile);
 router.post('/users/:id/deactivate', adminOnly, profileController.deactivateUser);
 router.post('/users/:id/activate', adminOnly, profileController.activateUser);
 

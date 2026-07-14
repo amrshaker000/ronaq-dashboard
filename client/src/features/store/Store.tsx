@@ -13,6 +13,7 @@ import {
   Sparkles,
   ShoppingBag as BagIcon,
   X,
+  CreditCard,
 } from 'lucide-react';
 import type { Product } from '@/types';
 import logoImg from '@/assets/logo.jpg';
@@ -49,6 +50,7 @@ export const Store: React.FC = () => {
   const [customerGovernorate, setCustomerGovernorate] = useState('القاهرة');
   const [customerAddress, setCustomerAddress] = useState('');
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'wallet_instapay'>('cod');
   const [submittingOrder, setSubmittingOrder] = useState(false);
 
   // Success Receipt State
@@ -291,12 +293,15 @@ export const Store: React.FC = () => {
         };
       }));
 
+      const calculatedShippingCost = ['القاهرة', 'الجيزة'].includes(customerGovernorate) ? 40 : customerGovernorate === 'الإسكندرية' ? 50 : 60;
+
       const payload = {
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim(),
         customer_governorate: customerGovernorate,
         customer_address: customerAddress.trim(),
-        payment_method: 'cod', // Default guest payment method
+        payment_method: paymentMethod,
+        shipping_cost: calculatedShippingCost,
         notes: notes || undefined,
         items: itemsPayload,
       };
@@ -643,6 +648,50 @@ export const Store: React.FC = () => {
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-body-md focus:border-brand-400 focus:outline-none"
                   rows={3}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-label-sm font-semibold text-on-surface">طريقة الدفع *</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div
+                    onClick={() => setPaymentMethod('cod')}
+                    className={`p-3 rounded-lg border text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-1 ${
+                      paymentMethod === 'cod'
+                        ? 'bg-brand-100 border-brand-400 text-brand-900 shadow-sm font-bold'
+                        : 'bg-white/40 border-neutral-300 text-on-surface hover:bg-white/60'
+                    }`}
+                  >
+                    <span className="text-body-md">الدفع عند الاستلام</span>
+                  </div>
+
+                  <div
+                    onClick={() => setPaymentMethod('wallet_instapay')}
+                    className={`p-3 rounded-lg border text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-1 ${
+                      paymentMethod === 'wallet_instapay'
+                        ? 'bg-brand-100 border-brand-400 text-brand-900 shadow-sm font-bold'
+                        : 'bg-white/40 border-neutral-300 text-on-surface hover:bg-white/60'
+                    }`}
+                  >
+                    <span className="text-body-md">إنستا باي (InstaPay)</span>
+                  </div>
+                </div>
+
+                {paymentMethod === 'wallet_instapay' && (
+                  <div className="mt-3 p-3.5 bg-brand-50/50 rounded-xl border border-brand-400/20 text-center space-y-2 animate-fade-in">
+                    <p className="text-[11px] text-brand-700 leading-relaxed">
+                      * يرجى إتمام التحويل بقيمة الإجمالي النهائي عبر زر الدفع بالأسفل ثم إتمام الطلب لنقوم بشحن ملصقاتك.
+                    </p>
+                    <a
+                      href="https://ipn.eg/S/amrshakr/instapay/2Tp4pM"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#8C52FF] hover:bg-[#773be6] text-white rounded-lg font-bold text-body-sm shadow-sm transition-all duration-200"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      ادفع الآن عبر إنستا باي (دفع تلقائي)
+                    </a>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">

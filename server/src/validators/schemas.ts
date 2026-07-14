@@ -40,7 +40,7 @@ export const updateProductSchema = z.object({
 // ============================================
 
 export const createOrderItemSchema = z.object({
-  product_id: z.number().int().positive('معرف المنتج مطلوب').optional(),
+  product_id: z.number().int().positive('معرف المنتج مطلوب').nullable().optional(),
   quantity: z.number().int().positive('الكمية يجب أن تكون 1 أو أكثر'),
   material: z.string().optional(),
   is_custom: z.boolean().optional(),
@@ -125,6 +125,15 @@ export const createUserSchema = z.object({
   role: z.enum(USER_ROLES, { message: 'الدور غير صالح' }),
   avatar_url: z.string().optional(),
 });
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(1).max(255).regex(/^[a-zA-Z\u0600-\u06FF\s]+$/, 'الاسم يجب أن يحتوي على أحرف فقط').optional(),
+  email: z.string().email('البريد الإلكتروني غير صالح').optional(),
+  role: z.enum(USER_ROLES).optional(),
+  avatar_url: z.string().nullable().optional(),
+  is_active: z.boolean().optional(),
+});
+
 
 // ============================================
 // Query Params

@@ -85,15 +85,7 @@ export const Products: React.FC = () => {
 
       const response = await apiRequest<Product[]>(`/products?${params.toString()}`);
       if (response.success) {
-        // Shuffle the products to show them in a random order every time
-        const shuffledProducts = [...response.data];
-        for (let i = shuffledProducts.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          const temp = shuffledProducts[i] as Product;
-          shuffledProducts[i] = shuffledProducts[j] as Product;
-          shuffledProducts[j] = temp;
-        }
-        setProducts(shuffledProducts);
+        setProducts(response.data);
         
         if (response.pagination) {
           setTotalPages(response.pagination.totalPages);
@@ -201,6 +193,7 @@ export const Products: React.FC = () => {
       const payload = {
         name,
         serial_number: serialNumber,
+        category: prodCategory,
         size: prodSize,
         price: Number(price),
         base_price: Number(basePrice),

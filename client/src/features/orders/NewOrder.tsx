@@ -254,7 +254,7 @@ export const NewOrder: React.FC = () => {
       }
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || 'فشل إنشاء الطلب. يرجى مراجعة المخزون.');
+      toast.error(error.message || 'فشل إنشاء الطلب. يرجى مراجعة المدخلات.');
     } finally {
       setLoading(false);
     }
@@ -593,7 +593,7 @@ export const NewOrder: React.FC = () => {
                   onClick={() => refreshProducts(true)}
                   disabled={refreshingProducts}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-label-sm bg-neutral-100 hover:bg-neutral-200 text-on-surface-variant transition-colors disabled:opacity-50"
-                  title="تحديث قائمة الملصقات والمخزون"
+                  title="تحديث قائمة الملصقات والأسعار"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${refreshingProducts ? 'animate-spin' : ''}`} />
                   تحديث

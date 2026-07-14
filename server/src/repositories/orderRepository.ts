@@ -169,7 +169,7 @@ export class OrderRepository {
     const { count, error } = await this.db
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .in('status', ['new', 'processing', 'ready']);
+      .in('status', ['received', 'processing', 'prepared', 'delivering']);
 
     if (error) throw error;
     return count || 0;
@@ -187,7 +187,10 @@ export class OrderRepository {
   }
 
   async getTodayRevenue(): Promise<number> {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const today = new Date(now.getTime() - offset).toISOString().split('T')[0];
+    
     const { data, error } = await this.db
       .from('orders')
       .select('total')
@@ -200,7 +203,10 @@ export class OrderRepository {
   }
 
   async getTodayOrdersCount(): Promise<number> {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const today = new Date(now.getTime() - offset).toISOString().split('T')[0];
+    
     const { count, error } = await this.db
       .from('orders')
       .select('*', { count: 'exact', head: true })

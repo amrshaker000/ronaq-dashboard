@@ -55,15 +55,16 @@ export const Dashboard: React.FC = () => {
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
-      case 'new':
+      case 'received':
         return 'badge-primary';
       case 'processing':
-      case 'ready':
+      case 'prepared':
+      case 'delivering':
         return 'badge-warning';
-      case 'shipped':
       case 'delivered':
         return 'badge-success';
       case 'cancelled':
+      case 'returned':
         return 'badge-danger';
       default:
         return 'badge-neutral';
@@ -211,9 +212,9 @@ export const Dashboard: React.FC = () => {
                     <div
                       className={cn(
                         'h-full rounded-full transition-all duration-500',
-                        status === 'new'
+                        status === 'received'
                           ? 'bg-brand-400'
-                          : status === 'cancelled'
+                          : status === 'cancelled' || status === 'returned'
                           ? 'bg-danger'
                           : status === 'delivered'
                           ? 'bg-success'
